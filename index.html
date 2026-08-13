@@ -1266,20 +1266,14 @@ window.addEventListener('DOMContentLoaded', ()=>{
   }, 100);
 });
 window.addEventListener('load', function(){ bootLog('window.load 触发'); });
+// 彻底禁用 Service Worker：先注销所有已注册 SW，避免旧 SW 缓存拖住界面（APK/手机缓存旧页面白屏的根因）
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').then(function(reg){
-    // 注册成功后立即检查更新，确保后续版本必然生效
-    if(reg && reg.update) { try { reg.update(); } catch(_){} }
-  }).catch(function(){ /* 注册失败不影响主流程 */ });
-  // 有新版本接管时提示刷新（避免旧缓存拖住界面）
-  navigator.serviceWorker.addEventListener('controllerchange', function(){
-    if(window.__erReloading) return; window.__erReloading=true;
-    try {
-      var t=document.getElementById('toast');
-      if(t){ t.textContent='已更新，正在刷新…'; t.classList.add('show'); }
-    } catch(_){}
-    setTimeout(function(){ location.reload(); }, 800);
-  });
+  try {
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      (regs||[]).forEach(function(r){ try { r.unregister(); } catch(_){} });
+      bootLog('旧 Service Worker 已注销 ('+(regs?regs.length:0)+'个)');
+    }).catch(function(e){ bootLog('SW 注销异常: '+e.message); });
+  } catch(_){}
 }
 
 /* ===== 手动清缓存并重置（设置页按钮调用） ===== */
