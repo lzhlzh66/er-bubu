@@ -223,6 +223,11 @@
     .boot-error .be-msg { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; word-break: break-all; }
     .boot-error .be-stack { font-size: 0.78rem; line-height: 1.5; white-space: pre-wrap; color: #ffb3b3;
       background: rgba(0,0,0,0.25); padding: 10px; border-radius: 8px; }
+
+    /* 临时调试状态条（诊断用，修复后移除） */
+    #boot-status { position: fixed; top: 0; left: 0; right: 0; z-index: 100000;
+      font: 11px/1.4 ui-monospace, Menlo, monospace; background: rgba(0,0,0,0.82); color: #5dff8f;
+      padding: 4px 6px; white-space: pre-wrap; max-height: 45%; overflow: auto; }
     .boot-error .be-close { margin-top: 14px; background: #ff8a8a; color: #2b1414; border: 0; border-radius: 8px;
       padding: 8px 16px; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
   </style>
@@ -406,8 +411,19 @@
 
 <div id="toast"></div>
 <div id="boot-error" class="boot-error"></div>
+<div id="boot-status" style="display:none;"></div>
 
 <script>
+/* ===== 临时调试日志（诊断白屏用，修复后移除） ===== */
+function bootLog(s){
+  try {
+    var el = document.getElementById('boot-status');
+    if(el){ el.style.display='block'; el.textContent = (el.textContent ? el.textContent + '\n' : '') + '[' + (Date.now()%100000) + '] ' + s; }
+  } catch(e){}
+}
+window.addEventListener('error', function(e){ bootLog('ERR: ' + (e && e.message ? e.message : '脚本错误')); });
+bootLog('脚本开始执行 ✅');
+
 /* ===== 安全存储封装（防止受限存储模式抛错导致整段脚本中断→白屏） ===== */
 function _safe(fn, fallback){
   try { return fn(); } catch(e){ return fallback; }
@@ -630,20 +646,24 @@ const Auth = {
 /* ===== 应用主控 ===== */
 const App = {
   boot(){
+    bootLog('boot() 开始');
     try {
       const auth=Storage.getAuth();
+      bootLog('getAuth 完成: ' + (auth? '已登录('+auth.username+')':'未登录'));
       if(auth){
         document.getElementById('auth-screen').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
-        this.updateUser(); this.go('home'); Home.render(); Sync.now().catch(()=>{});
+        this.updateUser(); bootLog('updateUser 完成'); this.go('home'); bootLog('go(home) 完成'); Home.render(); bootLog('Home.render 完成'); Sync.now().catch(()=>{});
       } else {
         document.getElementById('auth-screen').classList.remove('hidden');
         document.getElementById('app').classList.add('hidden');
-        Auth.show('login');
+        Auth.show('login'); bootLog('Auth.show(login) 完成');
       }
       document.getElementById('api-input').value=CONFIG.API_BASE;
+      bootLog('boot() 成功结束 ✅');
     } catch(e){
       console.error('boot failed', e);
+      bootLog('boot 异常: ' + (e && e.message ? e.message : e));
       // 即使出错也至少显示登录界面，绝不卡白屏
       try { document.getElementById('auth-screen')?.classList.remove('hidden'); } catch(_){}
       showBootError('启动失败: ' + (e && e.message ? e.message : e), e && e.stack);
@@ -1233,11 +1253,13 @@ const TravelPlanner = {
 
 /* ===== 启动与 Service Worker ===== */
 window.addEventListener('DOMContentLoaded', ()=>{
-  try { Auth.show('login'); } catch(e){ showBootError('初始化登录页失败', e && e.stack); }
+  bootLog('DOMContentLoaded 触发 ✅');
+  try { Auth.show('login'); bootLog('Auth.show(login) 完成'); } catch(e){ showBootError('初始化登录页失败', e && e.stack); bootLog('Auth.show 异常: '+e.message); }
   setTimeout(()=>{
     try { App.boot(); } catch(e){ showBootError('启动失败', e && e.stack); }
   }, 100);
 });
+window.addEventListener('load', function(){ bootLog('window.load 触发'); });
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(function(reg){
     // 注册成功后立即检查更新，确保后续版本必然生效

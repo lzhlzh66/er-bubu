@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一二布布·诊断页</title>
+<style>
+  body { font-family: sans-serif; background: #f9f5f0; color: #5a4636; padding: 20px; }
+  .ok { color: #2e7d32; font-weight: 700; }
+  .box { background: #fff; border-radius: 12px; padding: 16px; margin: 12px 0; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  button { padding: 10px 18px; border: 0; border-radius: 24px; background: #e89a5c; color: #fff; font-size: 1rem; }
+  #out { white-space: pre-wrap; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+  <h2>🐻 一二布布 诊断页</h2>
+  <div class="box">
+    <p id="js" class="ok">✅ JavaScript 正在运行</p>
+    <p id="ua"></p>
+    <p id="sw"></p>
+  </div>
+  <div class="box">
+    <p>如果看到上面绿字，说明本机浏览器能正常加载并运行 GitHub Pages 上的 JS。</p>
+    <button onclick="testFetch()">测试网络请求后端</button>
+    <div id="out"></div>
+  </div>
+  <script>
+    document.getElementById('ua').textContent = 'UA: ' + navigator.userAgent;
+    document.getElementById('sw').textContent = ('serviceWorker' in navigator) ? 'ServiceWorker: 支持' : 'ServiceWorker: 不支持';
+    function testFetch(){
+      const out = document.getElementById('out');
+      out.textContent = '请求中…';
+      fetch('https://er-bubu-server.onrender.com/api/health')
+        .then(r => r.json())
+        .then(d => { out.textContent = '✅ 后端响应: ' + JSON.stringify(d); })
+        .catch(e => { out.textContent = '❌ 请求失败: ' + e.message + '\n（可能是 Render 免费版休眠中，等30秒再试；或手机网络限制）'; });
+    }
+  </script>
+</body>
+</html>
