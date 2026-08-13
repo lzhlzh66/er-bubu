@@ -224,10 +224,6 @@
     .boot-error .be-stack { font-size: 0.78rem; line-height: 1.5; white-space: pre-wrap; color: #ffb3b3;
       background: rgba(0,0,0,0.25); padding: 10px; border-radius: 8px; }
 
-    /* 临时调试状态条（诊断用，修复后移除） */
-    #boot-status { position: fixed; top: 0; left: 0; right: 0; z-index: 100000;
-      font: 11px/1.4 ui-monospace, Menlo, monospace; background: rgba(0,0,0,0.82); color: #5dff8f;
-      padding: 4px 6px; white-space: pre-wrap; max-height: 45%; overflow: auto; }
     .boot-error .be-close { margin-top: 14px; background: #ff8a8a; color: #2b1414; border: 0; border-radius: 8px;
       padding: 8px 16px; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
   </style>
@@ -411,18 +407,10 @@
 
 <div id="toast"></div>
 <div id="boot-error" class="boot-error"></div>
-<div id="boot-status" style="display:none;"></div>
 
 <script>
-/* ===== 临时调试日志（诊断白屏用，修复后移除） ===== */
-function bootLog(s){
-  try {
-    var el = document.getElementById('boot-status');
-    if(el){ el.style.display='block'; el.textContent = (el.textContent ? el.textContent + '\n' : '') + '[' + (Date.now()%100000) + '] ' + s; }
-  } catch(e){}
-}
-window.addEventListener('error', function(e){ bootLog('ERR: ' + (e && e.message ? e.message : '脚本错误')); });
-bootLog('脚本开始执行 ✅');
+/* ===== 调试日志占位（已关闭，保留函数名避免调用处报错） ===== */
+function bootLog(s){ /* 已关闭 */ }
 
 /* ===== 安全存储封装（防止受限存储模式抛错导致整段脚本中断→白屏） ===== */
 function _safe(fn, fallback){
