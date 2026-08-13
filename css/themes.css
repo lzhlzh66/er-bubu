@@ -1,0 +1,33 @@
+/* 一二布布 · 主题：宫崎骏风 / 田园风 */
+
+/* 宫崎骏风：明亮、暖色、蓝天白云感 */
+[data-theme="ghibli"] {
+  --home-wall-top: #b8d4e8;
+  --home-wall-bottom: #eef4d3;
+  --home-floor: #d4a373;
+  --home-floor-dark: #b0865a;
+  --home-window: #87ceeb;
+  --home-curtain: #6b8cae;
+  --home-bed: #6b8cae;
+  --home-bed-cover: #e8b4b4;
+  --home-desk: #a67c52;
+  --home-chair: #7a9cc6;
+  --home-rug: #f4e4bc;
+  --accent: #f4a261;
+}
+
+/* 田园风：柔和、绿色、自然木色 */
+[data-theme="pastoral"] {
+  --home-wall-top: #d8e8d2;
+  --home-wall-bottom: #f2e8cf;
+  --home-floor: #c9b18a;
+  --home-floor-dark: #a38b65;
+  --home-window: #a8d5a2;
+  --home-curtain: #e6c9a8;
+  --home-bed: #8fb88f;
+  --home-bed-cover: #f2d0a9;
+  --home-desk: #9e8b6e;
+  --home-chair: #b5cda3;
+  --home-rug: #eaddcf;
+  --accent: #8fbc8f;
+}

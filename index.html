@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#f9f5f0">
+  <title>一二布布</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <style>
+    /* ===== 基础重置与变量 ===== */
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    :root {
+      --bg: #f9f5f0; --panel: #fff; --text: #3d3229; --muted: #8c7e6a;
+      --primary: #e89a5c; --primary-dark: #d17a3a; --danger: #e66d6d; --success: #7bc47f;
+      --shadow: 0 4px 14px rgba(0,0,0,0.08); --radius: 16px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    html, body { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; touch-action: manipulation; }
+
+    /* ===== 启动页 splash（CSS 3 秒自动隐藏兜底） ===== */
+    #splash { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: linear-gradient(160deg, #fff6ec, #fdeede 50%, #f1e2cf); animation: splashAutoHide 0.5s ease 3s forwards; }
+    #splash .splash-pets { display: flex; gap: 16px; transform: scale(1.6); }
+    #splash .splash-txt { font-size: 1.6rem; font-weight: 700; color: #6b5344; letter-spacing: 2px; }
+    #splash .splash-sub { font-size: 0.9rem; color: #9c8573; }
+    @keyframes splashAutoHide { to { opacity: 0; visibility: hidden; pointer-events: none; } }
+
+    /* ===== 全局布局 ===== */
+    #app { width: 100%; height: 100%; display: flex; flex-direction: column; }
+    .app-header { flex: 0 0 auto; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; background: var(--panel); box-shadow: 0 1px 6px rgba(0,0,0,0.05); z-index: 100; }
+    .app-header h1 { font-size: 1.1rem; font-weight: 700; color: var(--primary-dark); display: flex; align-items: center; gap: 6px; }
+    .user-pill { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--muted); background: var(--bg); padding: 4px 10px; border-radius: 20px; }
+    .app-main { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; position: relative; -webkit-overflow-scrolling: touch; }
+    .app-nav { flex: 0 0 auto; height: calc(64px + var(--safe-bottom)); padding-bottom: var(--safe-bottom); background: var(--panel); box-shadow: 0 -2px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-around; align-items: center; z-index: 100; }
+    .app-nav button { flex: 1; height: 100%; border: none; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 0.7rem; color: var(--muted); cursor: pointer; }
+    .app-nav button.active { color: var(--primary); }
+    .app-nav button .icon { font-size: 1.4rem; line-height: 1; }
+
+    /* ===== 通用组件 ===== */
+    .panel { background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow); margin: 12px; padding: 14px; }
+    .panel-title { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: var(--text); display: flex; align-items: center; justify-content: space-between; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border: none; border-radius: 24px; background: var(--primary); color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(232,154,92,0.3); }
+    .btn:active { transform: scale(0.97); }
+    .btn.secondary { background: #e8e1d8; color: var(--text); box-shadow: none; }
+    .btn.danger { background: var(--danger); }
+    .btn.small { padding: 6px 12px; font-size: 0.8rem; border-radius: 16px; }
+    input, textarea, select { width: 100%; padding: 12px 14px; margin: 6px 0 10px; border: 1px solid #e0d8ce; border-radius: 12px; background: var(--bg); color: var(--text); font-size: 0.95rem; }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary); }
+    .hidden { display: none !important; }
+    .center { display: flex; align-items: center; justify-content: center; }
+    .empty-tip { text-align: center; color: var(--muted); padding: 30px 16px; font-size: 0.9rem; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; background: #eee6dc; color: var(--muted); margin-right: 4px; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+
+    /* ===== 登录页 ===== */
+    #auth-screen { width: 100%; min-height: 100%; padding: 40px 24px; background: linear-gradient(160deg, #fff6ec, #fdeede); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+    .auth-card { width: 100%; max-width: 360px; background: var(--panel); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+    .auth-card h2 { text-align: center; margin-bottom: 18px; color: var(--primary-dark); }
+    .auth-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .auth-tabs button { flex: 1; padding: 10px; border: none; background: #eee6dc; border-radius: 12px; color: var(--muted); font-weight: 600; cursor: pointer; }
+    .auth-tabs button.active { background: var(--primary); color: #fff; }
+    .api-input { margin-bottom: 12px; }
+    .api-input label { font-size: 0.8rem; color: var(--muted); }
+
+    /* ===== 小家模块 ===== */
+    #home-view { width: 100%; min-height: 100%; padding-bottom: 12px; }
+    .couple-banner { margin: 10px 12px 0; padding: 8px 14px; background: linear-gradient(90deg,#ffe3ec,#fff3e0); border-radius: 14px; font-size: 0.85rem; color: #a85a72; text-align: center; font-weight: 600; box-shadow: var(--shadow); }
+    .room { position: relative; width: 100%; aspect-ratio: 1 / 1.15; max-height: 520px; overflow: hidden; border-radius: 0 0 var(--radius) var(--radius); box-shadow: var(--shadow); transition: background 0.4s; margin-top: 8px; }
+    .room[data-theme="ghibli"] { --wall-top: #b8d4e8; --wall-bottom: #eef4d3; --floor: #d4a373; --floor-dark: #b0865a; --window: #87ceeb; --curtain: #6b8cae; --bed: #6b8cae; --bed-cover: #e8b4b4; --desk: #a67c52; --chair: #7a9cc6; --rug: #f4e4bc; }
+    .room[data-theme="pastoral"] { --wall-top: #d8e8d2; --wall-bottom: #f2e8cf; --floor: #c9b18a; --floor-dark: #a38b65; --window: #a8d5a2; --curtain: #e6c9a8; --bed: #8fb88f; --bed-cover: #f2d0a9; --desk: #9e8b6e; --chair: #b5cda3; --rug: #eaddcf; }
+    .room-bg { position: absolute; inset: 0; background: linear-gradient(180deg, var(--wall-top) 0%, var(--wall-bottom) 65%, var(--floor) 65%, var(--floor-dark) 100%); }
+    .room-window { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); width: 42%; height: 30%; border: 6px solid #fff; border-radius: 50% 50% 0 0; background: linear-gradient(180deg, var(--window), #fff8); box-shadow: inset 0 0 20px rgba(0,0,0,0.05); }
+    .room-curtain { position: absolute; top: 8%; width: 14%; height: 34%; background: var(--curtain); border-radius: 0 0 20px 20px; box-shadow: 2px 2px 8px rgba(0,0,0,0.08); }
+    .room-curtain.left { left: 6%; }
+    .room-curtain.right { right: 6%; }
+    .room-rug { position: absolute; bottom: 4%; left: 50%; transform: translateX(-50%); width: 70%; height: 22%; background: var(--rug); border-radius: 50%; opacity: 0.8; }
+    .room-bed { position: absolute; bottom: 14%; right: 6%; width: 34%; height: 22%; }
+    .room-bed-head { position: absolute; bottom: 0; right: 0; width: 100%; height: 70%; background: var(--bed); border-radius: 12px 12px 0 0; }
+    .room-bed-cover { position: absolute; bottom: 0; right: 0; width: 92%; height: 55%; background: var(--bed-cover); border-radius: 10px 10px 0 0; }
+    .room-desk { position: absolute; bottom: 14%; left: 8%; width: 36%; height: 18%; }
+    .room-desk-top { position: absolute; top: 0; left: 0; width: 100%; height: 30%; background: var(--desk); border-radius: 6px; }
+    .room-desk-leg { position: absolute; top: 30%; width: 8%; height: 70%; background: var(--desk); border-radius: 0 0 4px 4px; }
+    .room-desk-leg.l1 { left: 8%; }
+    .room-desk-leg.l2 { right: 8%; }
+    .room-chair { position: absolute; bottom: 14%; left: 34%; width: 14%; height: 14%; background: var(--chair); border-radius: 8px 8px 0 0; }
+    .room-bookshelf { position: absolute; top: 36%; left: 6%; width: 16%; height: 32%; background: #9e8b6e; border-radius: 4px; }
+    .room-bookshelf::after { content: ''; position: absolute; top: 30%; left: 10%; width: 80%; height: 6%; background: #7d6a52; box-shadow: 0 20px 0 #7d6a52; border-radius: 2px; }
+    .room-plant { position: absolute; bottom: 36%; left: 10%; width: 10%; height: 14%; background: #7da668; border-radius: 50% 50% 40% 40%; }
+    .room-plant-pot { position: absolute; bottom: 32%; left: 9%; width: 12%; height: 6%; background: #b0865a; border-radius: 0 0 6px 6px; }
+    .room-aircon { position: absolute; top: 4%; right: 6%; width: 22%; height: 6%; background: #fff; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+    /* 墙面小白板 */
+    .room-whiteboard { position: absolute; top: 30%; left: 30%; width: 26%; height: 16%; background: #fffef5; border: 4px solid #d9d2c2; border-radius: 4px; box-shadow: 2px 2px 6px rgba(0,0,0,0.12); cursor: pointer; padding: 4px 6px; overflow: hidden; }
+    .room-whiteboard .wb-title { font-size: 0.5rem; color: #b0a890; }
+    .room-whiteboard .wb-text { font-size: 0.55rem; color: #5a5346; line-height: 1.2; word-break: break-all; }
+
+    /* 小熊 */
+    .pet { position: absolute; width: 22%; height: 24%; cursor: pointer; transition: transform 0.2s; }
+    .pet:active { transform: scale(0.95); }
+    .pet svg { width: 100%; height: 100%; overflow: visible; }
+    .pet-yier { fill: #fbfaf6; }
+    .pet-bubu { fill: #c79366; }
+    .pet-face { fill: #3d3229; }
+    .pet-blush { fill: #ffb7b2; opacity: 0; transition: opacity 0.3s; }
+    .pet.blush .pet-blush { opacity: 0.7; }
+    .pet.me .pet-name { background: #ffe3ec; color: #a85a72; font-weight: 700; }
+    .pet-name { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 0.7rem; color: #6b5344; background: rgba(255,255,255,0.7); padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+    .pet-state { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); font-size: 1.4rem; animation: floatState 1.5s ease-in-out infinite; }
+    @keyframes floatState { 0%,100%{ transform: translateX(-50%) translateY(0); opacity:1; } 50%{ transform: translateX(-50%) translateY(-6px); opacity:0.7; } }
+    @keyframes breathe { 0%,100%{ transform: scale(1); } 50%{ transform: scale(1.03); } }
+    @keyframes sway { 0%,100%{ transform: rotate(-2deg); } 50%{ transform: rotate(2deg); } }
+    .pet.yier svg { animation: breathe 3s ease-in-out infinite; transform-origin: bottom center; }
+    .pet.bubu svg { animation: sway 4s ease-in-out infinite; transform-origin: bottom center; }
+
+    /* 状态条 */
+    .pet-bars { display: flex; gap: 8px; padding: 10px 16px; }
+    .bar-item { flex: 1; text-align: center; }
+    .bar-label { font-size: 0.65rem; color: var(--muted); margin-bottom: 3px; }
+    .bar-track { width: 100%; height: 8px; background: #e8e1d8; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s; }
+    .bar-fill.hunger { background: #e89a5c; }
+    .bar-fill.mood { background: #7bc47f; }
+    .bar-fill.energy { background: #6b8cae; }
+    .bar-fill.intimacy { background: #e8b4b4; }
+
+    /* 互动按钮 */
+    .interact-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 0 16px 12px; }
+    .interact-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border: none; border-radius: 14px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.06); color: var(--text); font-size: 0.72rem; cursor: pointer; }
+    .interact-btn .emoji { font-size: 1.4rem; }
+    .interact-btn:active { background: #fff3e6; }
+
+    /* ===== 冰箱弹窗 ===== */
+    .fridge-modal { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .fridge-modal.open { opacity: 1; pointer-events: auto; }
+    .fridge-panel { width: 100%; max-height: 82%; background: var(--panel); border-radius: var(--radius) var(--radius) 0 0; padding: 16px; transform: translateY(100%); transition: transform 0.3s; overflow-y: auto; }
+    .fridge-modal.open .fridge-panel { transform: translateY(0); }
+    .fridge-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .fridge-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .fridge-tabs button { flex: 1; padding: 8px; border: none; background: #eee6dc; border-radius: 12px; color: var(--muted); font-weight: 600; cursor: pointer; }
+    .fridge-tabs button.active { background: var(--primary); color: #fff; }
+    .fridge-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .fridge-zone { background: #f3f7fb; border-radius: 12px; padding: 10px; }
+    .fridge-zone.freeze { background: #eef6fb; }
+    .fridge-zone h4 { font-size: 0.85rem; margin-bottom: 8px; color: #4a6fa5; }
+    .fridge-cat { margin-bottom: 8px; }
+    .fridge-cat-title { font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .fridge-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; padding: 6px 0; border-bottom: 1px dashed #dbe4ec; }
+    .fridge-item.expire-soon { background: #fff7e0; }
+    .fridge-item.expired { background: #ffe5e5; }
+    .fridge-item .qty { color: var(--muted); }
+    .fridge-item .exp { font-size: 0.65rem; color: #c0392b; }
+    .dish-card { background: #fff; border: 1px solid #f0ebe5; border-radius: 12px; padding: 10px; margin-bottom: 10px; }
+    .dish-card h4 { font-size: 0.9rem; margin-bottom: 4px; }
+    .dish-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; }
+    .dish-ing { font-size: 0.75rem; }
+    .dish-ing .miss { color: #c0392b; }
+    .dish-steps { font-size: 0.72rem; color: var(--text); margin-top: 4px; line-height: 1.5; }
+
+    /* ===== 朋友圈 ===== */
+    .feed-compose { margin: 12px; }
+    .feed-card { background: var(--panel); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); margin: 12px; }
+    .feed-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .feed-avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; background: #ffe3ec; }
+    .feed-author { font-weight: 700; font-size: 0.9rem; }
+    .feed-time { font-size: 0.7rem; color: var(--muted); }
+    .feed-text { font-size: 0.9rem; line-height: 1.6; margin: 4px 0; white-space: pre-wrap; }
+    .feed-imgs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+    .feed-imgs img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+    .feed-voice { margin-top: 8px; }
+    .feed-voice audio { width: 100%; }
+
+    /* ===== 模块面板 ===== */
+    .module-list { display: flex; flex-direction: column; gap: 12px; }
+    .module-card { background: var(--panel); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+    .module-card h3 { font-size: 1rem; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .todo-item, .habit-day, .plan-item, .q-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0ebe5; }
+    .todo-item input[type=checkbox] { width: 18px; height: 18px; }
+    .todo-item.done span { text-decoration: line-through; color: var(--muted); }
+    .habit-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+    .habit-grid .day { aspect-ratio: 1; border-radius: 8px; background: #f0ebe5; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--muted); }
+    .habit-grid .day.done { background: var(--success); color: #fff; }
+
+    /* ===== 旅行模块 ===== */
+    .travel-card { background: linear-gradient(135deg, #fff8f0, #fff); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); margin-bottom: 12px; }
+    .travel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .travel-route { font-size: 1.1rem; font-weight: 700; color: var(--primary-dark); }
+    .travel-budget { font-size: 0.85rem; color: var(--muted); }
+    .journal-day { background: #fffbf6; border-radius: 12px; padding: 12px; margin-top: 10px; border-left: 4px solid var(--primary); }
+    .journal-day h4 { font-size: 0.85rem; margin-bottom: 6px; color: var(--primary-dark); }
+    .journal-day p { font-size: 0.82rem; line-height: 1.6; color: var(--text); }
+
+    /* ===== 设置页 ===== */
+    .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0ebe5; }
+    .setting-row:last-child { border: none; }
+    .sync-status { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; background: #eef6eb; color: #4a7c38; }
+    .sync-status.offline { background: #f6eeee; color: var(--danger); }
+
+    /* ===== 弹窗/遮罩 ===== */
+    .modal { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal.open { display: flex; }
+    .modal-box { background: var(--panel); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 380px; max-height: 86vh; overflow-y: auto; box-shadow: var(--shadow); }
+    .modal-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 14px; }
+    .activity-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+    .activity-opt { padding: 10px 4px; border: 1px solid #e0d8ce; border-radius: 12px; text-align: center; font-size: 0.78rem; cursor: pointer; background: var(--bg); }
+    .activity-opt.active { border-color: var(--primary); background: #fff3e6; color: var(--primary-dark); font-weight: 700; }
+    .activity-opt .emoji { font-size: 1.3rem; display: block; margin-bottom: 2px; }
+    .common-acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+    .recording { color: var(--danger); font-weight: 700; }
+
+    /*  Toast  */
+    #toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; background: rgba(61,50,41,0.9); color: #fff; padding: 10px 18px; border-radius: 24px; font-size: 0.85rem; z-index: 1000; transition: all 0.3s; }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- 启动页 -->
+<div id="splash">
+  <div class="splash-pets">
+    <svg width="60" height="70" viewBox="0 0 60 70"><ellipse cx="30" cy="55" rx="22" ry="14" fill="#c79366"/><circle cx="30" cy="32" r="20" fill="#c79366"/><circle cx="18" cy="16" r="8" fill="#c79366"/><circle cx="42" cy="16" r="8" fill="#c79366"/><circle cx="24" cy="30" r="2.5" fill="#3d3229"/><circle cx="36" cy="30" r="2.5" fill="#3d3229"/><ellipse cx="30" cy="37" rx="4" ry="3" fill="#3d3229"/><circle cx="18" cy="36" r="3" fill="#ffb7b2" opacity="0.6"/><circle cx="42" cy="36" r="3" fill="#ffb7b2" opacity="0.6"/></svg>
+    <svg width="54" height="66" viewBox="0 0 54 66"><ellipse cx="27" cy="53" rx="20" ry="13" fill="#fbfaf6"/><circle cx="27" cy="30" r="18" fill="#fbfaf6"/><circle cx="16" cy="14" r="7" fill="#fbfaf6"/><circle cx="38" cy="14" r="7" fill="#fbfaf6"/><circle cx="22" cy="28" r="2.2" fill="#3d3229"/><circle cx="32" cy="28" r="2.2" fill="#3d3229"/><ellipse cx="27" cy="34" rx="3.5" ry="2.5" fill="#3d3229"/><circle cx="16" cy="34" r="2.8" fill="#ffb7b2" opacity="0.7"/><circle cx="38" cy="34" r="2.8" fill="#ffb7b2" opacity="0.7"/></svg>
+  </div>
+  <div class="splash-txt">一二布布</div>
+  <div class="splash-sub">正在布置小屋…</div>
+</div>
+
+<!-- 应用 -->
+<div id="app" class="hidden">
+  <header class="app-header">
+    <h1>🏠 一二布布</h1>
+    <div class="user-pill" id="user-pill">未登录</div>
+  </header>
+
+  <main class="app-main" id="main">
+    <!-- 登录/注册 -->
+    <section id="auth-screen">
+      <div class="auth-card">
+        <h2>一二布布</h2>
+        <div class="auth-tabs">
+          <button class="active" onclick="Auth.show('login')">登录</button>
+          <button onclick="Auth.show('register')">注册</button>
+        </div>
+        <div id="auth-form"></div>
+        <div class="api-input" style="margin-top:12px;">
+          <label>同步服务器地址（默认本地测试）</label>
+          <input id="api-input" type="text" value="http://localhost:3000">
+        </div>
+      </div>
+    </section>
+
+    <!-- 小家视图 -->
+    <section id="home-view" class="hidden">
+      <div class="couple-banner">一二 ❤️ 布布 · 夫妻小家</div>
+      <div class="room" data-theme="ghibli" id="room">
+        <div class="room-bg"></div>
+        <div class="room-window"></div>
+        <div class="room-curtain left"></div>
+        <div class="room-curtain right"></div>
+        <div class="room-rug"></div>
+        <div class="room-bookshelf"></div>
+        <div class="room-plant"></div>
+        <div class="room-plant-pot"></div>
+        <div class="room-aircon"></div>
+        <div class="room-desk"><div class="room-desk-top"></div><div class="room-desk-leg l1"></div><div class="room-desk-leg l2"></div></div>
+        <div class="room-chair"></div>
+        <div class="room-bed"><div class="room-bed-head"></div><div class="room-bed-cover"></div></div>
+        <!-- 墙面小白板 -->
+        <div class="room-whiteboard" id="room-whiteboard" onclick="Whiteboard.open()">
+          <div class="wb-title">📋 小白板</div>
+          <div class="wb-text" id="wb-text"></div>
+        </div>
+        <!-- 一二 -->
+        <div class="pet yier" id="pet-yier" style="left:16%; bottom:18%;" onclick="Home.tapBear('yiEr')">
+          <svg viewBox="0 0 60 70"><ellipse cx="30" cy="55" rx="22" ry="14" class="pet-yier"/><circle cx="30" cy="32" r="20" class="pet-yier"/><circle cx="18" cy="16" r="8" class="pet-yier"/><circle cx="42" cy="16" r="8" class="pet-yier"/><circle cx="24" cy="30" r="2.5" class="pet-face"/><circle cx="36" cy="30" r="2.5" class="pet-face"/><ellipse cx="30" cy="37" rx="4" ry="3" class="pet-face"/><circle cx="18" cy="36" r="3" class="pet-blush"/><circle cx="42" cy="36" r="3" class="pet-blush"/></svg>
+          <div class="pet-name">一二</div>
+        </div>
+        <!-- 布布 -->
+        <div class="pet bubu" id="pet-bubu" style="right:18%; bottom:16%;" onclick="Home.tapBear('bubu')">
+          <svg viewBox="0 0 60 70"><ellipse cx="30" cy="55" rx="23" ry="15" class="pet-bubu"/><circle cx="30" cy="32" r="21" class="pet-bubu"/><circle cx="18" cy="16" r="8" class="pet-bubu"/><circle cx="42" cy="16" r="8" class="pet-bubu"/><circle cx="24" cy="30" r="2.5" class="pet-face"/><circle cx="36" cy="30" r="2.5" class="pet-face"/><ellipse cx="30" cy="37" rx="4" ry="3" class="pet-face"/><circle cx="18" cy="36" r="3" class="pet-blush"/><circle cx="42" cy="36" r="3" class="pet-blush"/></svg>
+          <div class="pet-name">布布</div>
+        </div>
+      </div>
+
+      <div class="pet-bars">
+        <div class="bar-item"><div class="bar-label">饱腹</div><div class="bar-track"><div class="bar-fill hunger" id="bar-hunger-yier" style="width:80%"></div></div></div>
+        <div class="bar-item"><div class="bar-label">心情</div><div class="bar-track"><div class="bar-fill mood" id="bar-mood-yier" style="width:80%"></div></div></div>
+        <div class="bar-item"><div class="bar-label">精力</div><div class="bar-track"><div class="bar-fill energy" id="bar-energy-yier" style="width:80%"></div></div></div>
+        <div class="bar-item"><div class="bar-label">亲密</div><div class="bar-track"><div class="bar-fill intimacy" id="bar-intimacy-yier" style="width:50%"></div></div></div>
+      </div>
+
+      <div class="interact-bar">
+        <button class="interact-btn" onclick="Home.openFridge()"><span class="emoji">🧊</span><span>冰箱库存</span></button>
+        <button class="interact-btn" onclick="Home.feedMy()"><span class="emoji">🍖</span><span>喂食</span></button>
+        <button class="interact-btn" onclick="Role.openActivity()"><span class="emoji">🎭</span><span>状态/活动</span></button>
+        <button class="interact-btn" onclick="Home.toggleTheme()"><span class="emoji">🎨</span><span>切换主题</span></button>
+      </div>
+      <div class="interact-bar" style="padding-top:0;">
+        <button class="interact-btn" onclick="Role.common('sleep')"><span class="emoji">🛏️</span><span>一起睡觉</span></button>
+        <button class="interact-btn" onclick="Role.common('study')"><span class="emoji">📚</span><span>书桌学习</span></button>
+        <button class="interact-btn" onclick="App.go('feed')"><span class="emoji">📷</span><span>朋友圈</span></button>
+        <button class="interact-btn" onclick="Home.openTravel()"><span class="emoji">✈️</span><span>随机旅行</span></button>
+      </div>
+    </section>
+
+    <!-- 公共空间/协作视图 -->
+    <section id="shared-view" class="hidden">
+      <div class="panel">
+        <div class="panel-title">我的圈子 <span id="group-code" class="tag">未加入</span></div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:10px;">公共空间的数据（冰箱、待办、学习榜、旅行）会在此共享。</p>
+        <div id="group-actions"></div>
+      </div>
+      <div class="module-list" id="shared-list"></div>
+    </section>
+
+    <!-- 朋友圈视图 -->
+    <section id="feed-view" class="hidden">
+      <div class="feed-compose">
+        <button class="btn" style="width:100%;" onclick="Feed.compose()">＋ 发布动态</button>
+      </div>
+      <div id="feed-list"></div>
+    </section>
+
+    <!-- 学习视图 -->
+    <section id="study-view" class="hidden"></section>
+
+    <!-- 旅行视图 -->
+    <section id="travel-view" class="hidden"></section>
+
+    <!-- 设置视图 -->
+    <section id="settings-view" class="hidden">
+      <div class="panel">
+        <div class="panel-title">角色与账号</div>
+        <div class="setting-row"><span>我是谁</span>
+          <select id="setting-role" style="width:50%;margin:0;padding:8px 10px;font-size:0.8rem;" onchange="Role.setMyRole(this.value)">
+            <option value="yiEr">一二（白熊）</option>
+            <option value="buBu">布布（棕熊）</option>
+          </select>
+        </div>
+        <p style="font-size:0.75rem;color:var(--muted);">另一只小熊就是你的伴侣，你们是夫妻 ❤️。选好后会高亮显示你自己的小熊。</p>
+        <div class="setting-row"><span>当前账号</span><span id="setting-user">未登录</span></div>
+        <div class="setting-row"><span>同步状态</span><span class="sync-status offline" id="sync-status">离线</span></div>
+        <div class="setting-row"><span>服务器地址</span><input id="setting-api" type="text" style="width:55%;margin:0;padding:6px 10px;font-size:0.75rem;"></div>
+        <button class="btn secondary" style="width:100%;margin-top:10px;" onclick="Sync.now()">立即同步</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">数据安全</div>
+        <button class="btn secondary small" onclick="Storage.export()">导出数据</button>
+        <button class="btn secondary small" onclick="App.importData()">导入数据</button>
+        <button class="btn danger small" style="margin-top:10px;" onclick="Auth.logout()">退出登录</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="app-nav">
+    <button class="active" onclick="App.go('home')" data-page="home"><span class="icon">🏠</span><span>小家</span></button>
+    <button onclick="App.go('shared')" data-page="shared"><span class="icon">🤝</span><span>空间</span></button>
+    <button onclick="App.go('feed')" data-page="feed"><span class="icon">📷</span><span>朋友圈</span></button>
+    <button onclick="App.go('travel')" data-page="travel"><span class="icon">✈️</span><span>旅行</span></button>
+    <button onclick="App.go('settings')" data-page="settings"><span class="icon">⚙️</span><span>设置</span></button>
+  </nav>
+</div>
+
+<!-- 冰箱弹窗 -->
+<div class="fridge-modal" id="fridge-modal" onclick="Home.closeFridge(event)">
+  <div class="fridge-panel" onclick="event.stopPropagation()">
+    <div class="fridge-header">
+      <h3>🧊 冰箱库存</h3>
+      <button class="btn small secondary" onclick="Fridge.close()">收起</button>
+    </div>
+    <div class="fridge-tabs">
+      <button class="active" onclick="Fridge.switchTab('stock')">库存</button>
+      <button onclick="Fridge.switchTab('menu')">今日菜单</button>
+    </div>
+    <div id="fridge-content"></div>
+  </div>
+</div>
+
+<!-- 通用弹窗 -->
+<div class="modal" id="modal">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title">标题</div>
+    <div id="modal-body"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn secondary small" onclick="App.closeModal()">取消</button>
+      <button class="btn small" id="modal-ok" onclick="App.closeModal()">确定</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ===== 配置 ===== */
+window.CONFIG = {
+  APP_NAME: '一二布布', VERSION: '2.0.0',
+  API_BASE: localStorage.getItem('er-bubu-api') || 'http://localhost:3000',
+  DEFAULT_ORIGIN: '广州'
+};
+
+/* ===== 状态枚举 ===== */
+const ACTIVITIES = {
+  idle:{icon:'💭',label:'发呆'}, work:{icon:'💼',label:'工作'}, study:{icon:'📚',label:'学习'},
+  exercise:{icon:'🏃',label:'运动'}, music:{icon:'🎧',label:'听歌'}, sleep:{icon:'💤',label:'睡觉'},
+  drama:{icon:'📺',label:'看剧'}, eat:{icon:'🍽️',label:'吃饭'}, travel:{icon:'✈️',label:'旅行'},
+  movie:{icon:'🎬',label:'看电影'}, shop:{icon:'🛒',label:'逛超市'}, hike:{icon:'⛰️',label:'爬山'}
+};
+const COMMON_ACTS = {
+  exercise:{icon:'🏃',label:'一起运动',verb:'去运动了'}, hike:{icon:'⛰️',label:'爬山',verb:'去爬山了'},
+  travel:{icon:'✈️',label:'旅行',verb:'去旅行了'}, movie:{icon:'🎬',label:'看电影',verb:'去看电影了'},
+  shop:{icon:'🛒',label:'逛超市',verb:'去逛超市了'}, sleep:{icon:'🛏️',label:'睡觉',verb:'一起睡着了'},
+  study:{icon:'📚',label:'学习',verb:'一起学习啦'}
+};
+const FRIDGE_CATS = ['水果','青菜','肉类','海鲜','蛋奶','主食'];
+const CAT_ICON = {水果:'🍎',青菜:'🥬',肉类:'🥩',海鲜:'🦐',蛋奶:'🥚',主食:'🍚'};
+
+/* ===== 本地存储（个人数据） ===== */
+const Storage = {
+  KEY: 'er-bubu-data-v2', AUTH_KEY: 'er-bubu-auth',
+  get() {
+    try { const raw = localStorage.getItem(this.KEY); if(!raw) return defaultData(); return this.migrate(JSON.parse(raw)); }
+    catch(e){ console.error(e); return defaultData(); }
+  },
+  set(data){ data.updatedAt = Date.now(); localStorage.setItem(this.KEY, JSON.stringify(data)); },
+  getAuth(){ try{ return JSON.parse(localStorage.getItem(this.AUTH_KEY))||null; }catch(e){ return null; } },
+  setAuth(a){ localStorage.setItem(this.AUTH_KEY, JSON.stringify(a)); },
+  clearAuth(){ localStorage.removeItem(this.AUTH_KEY); const d=this.get(); d.profile=null; this.set(d); },
+  migrate(data){
+    const def=defaultData();
+    for(const k of Object.keys(def)) if(data[k]===undefined) data[k]=JSON.parse(JSON.stringify(def[k]));
+    return data;
+  },
+  export(){ const data=this.get(); const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='er-bubu-backup.json'; a.click(); }
+};
+
+/* 共享数据（圈子空间） */
+function defaultShared(){
+  return {
+    pets:{
+      yiEr:{name:'一二',color:'white',hunger:80,mood:80,energy:80,intimacy:50,growth:0,outfit:'default',activity:'idle',activitySince:0},
+      buBu:{name:'布布',color:'brown',hunger:80,mood:80,energy:80,intimacy:50,growth:0,outfit:'default',activity:'idle',activitySince:0}
+    },
+    fridge:{cold:{}, freeze:{}},
+    todos:[],
+    habits:{records:{}, streaks:{}},
+    exam:{examName:'',examDate:'',plans:[],wrongQuestions:[],pomodoro:{today:0,total:0}},
+    whiteboard:{text:'欢迎来到一二布布的小家～ 在墙上写点什么吧', editor:'系统'},
+    feed:[],
+    menu:[],
+    dishLibrary:[]
+  };
+}
+function getShared(){
+  const d=Storage.get();
+  if(!d.sharedData || typeof d.sharedData!=='object'){ d.sharedData=defaultShared(); Storage.set(d); }
+  // 补全缺字段
+  const def=defaultShared();
+  for(const k of Object.keys(def)) if(d.sharedData[k]===undefined) d.sharedData[k]=JSON.parse(JSON.stringify(def[k]));
+  return d.sharedData;
+}
+function setShared(obj){ const d=Storage.get(); d.sharedData=obj; Storage.set(d); }
+
+function defaultData(){
+  return { version:2, updatedAt:Date.now(), profile:null, home:{theme:'ghibli'}, travels:[], sharedData:null };
+}
+
+/* ===== 网络/同步 ===== */
+const Sync = {
+  async req(path, opts={}){
+    const auth=Storage.getAuth();
+    const headers={};
+    if(auth&&auth.token) headers['Authorization']='Bearer '+auth.token;
+    try{
+      const res=await fetch(CONFIG.API_BASE+path, {...opts, headers:{...headers, ...(opts.headers||{})}});
+      if(!res.ok) throw new Error((await res.json()).error||res.statusText);
+      return await res.json();
+    }catch(e){ throw e; }
+  },
+  async now(){
+    const auth=Storage.getAuth(); if(!auth) return App.toast('请先登录');
+    if(!navigator.onLine) { App.setSync('offline'); return; }
+    App.setSync('syncing');
+    try{
+      await this.req('/api/data',{method:'POST',body:JSON.stringify({data:Storage.get()})});
+      const remote=await this.req('/api/data');
+      const local=Storage.get();
+      if(remote.updatedAt > (local.updatedAt||0)){ Storage.set(this.migrateRemote(remote.data)); App.toast('已同步云端数据'); }
+      else { App.toast('已上传到云端'); }
+      const shared=await this.req('/api/share/'+auth.groupId);
+      local.sharedData=shared.data; Storage.set(local);
+      App.render(); App.setSync('online');
+    }catch(e){ console.error(e); App.setSync('offline'); App.toast('同步失败：'+e.message); }
+  },
+  migrateRemote(data){ const d=defaultData(); Object.assign(d,data); if(!d.sharedData) d.sharedData=defaultShared(); return d; },
+  async pushShared(){
+    const auth=Storage.getAuth(); if(!auth || !navigator.onLine) return;
+    try{ await this.req('/api/share/'+auth.groupId,{method:'POST',body:JSON.stringify({data:getShared()})}); }
+    catch(e){ console.warn('pushShared fail', e); }
+  }
+};
+
+/* ===== 认证 ===== */
+const Auth = {
+  show(mode){
+    document.querySelectorAll('.auth-tabs button').forEach(b=>b.classList.toggle('active', b.textContent===(mode==='login'?'登录':'注册')));
+    const isLogin=mode==='login';
+    document.getElementById('auth-form').innerHTML=`
+      <input id="auth-user" placeholder="用户名" value="">
+      <input id="auth-pass" type="password" placeholder="密码" value="">
+      ${!isLogin?'<input id="auth-code" placeholder="邀请码（可选，没有则创建新圈子）">' : ''}
+      <button class="btn" style="width:100%;margin-top:10px;" onclick="Auth.${mode}()">${isLogin?'登录':'注册并创建圈子'}</button>
+    `;
+  },
+  async register(){
+    CONFIG.API_BASE=document.getElementById('api-input').value.trim();
+    const username=document.getElementById('auth-user').value.trim();
+    const password=document.getElementById('auth-pass').value;
+    const inviteCode=document.getElementById('auth-code')?.value.trim();
+    try{
+      const res=await Sync.req('/api/register',{method:'POST',body:JSON.stringify({username,password,inviteCode})});
+      this.save(res); if(!Storage.get().sharedData) setShared(defaultShared());
+      App.toast('注册成功'); App.boot();
+    }catch(e){ App.toast(e.message); }
+  },
+  async login(){
+    CONFIG.API_BASE=document.getElementById('api-input').value.trim();
+    const username=document.getElementById('auth-user').value.trim();
+    const password=document.getElementById('auth-pass').value;
+    try{
+      const res=await Sync.req('/api/login',{method:'POST',body:JSON.stringify({username,password})});
+      this.save(res); if(!Storage.get().sharedData) setShared(defaultShared());
+      App.toast('登录成功'); App.boot();
+    }catch(e){ App.toast(e.message); }
+  },
+  save(res){
+    const auth={token:res.token, username:res.username, groupId:res.groupId, role:res.role, inviteCode:res.inviteCode};
+    Storage.setAuth(auth);
+    const data=Storage.get(); data.profile=auth; if(res.sharedData) data.sharedData=res.sharedData; Storage.set(data);
+  },
+  logout(){ Storage.clearAuth(); App.boot(); App.toast('已退出'); }
+};
+
+/* ===== 应用主控 ===== */
+const App = {
+  boot(){
+    const auth=Storage.getAuth();
+    if(auth){
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      this.updateUser(); this.go('home'); Home.render(); Sync.now().catch(()=>{});
+    } else {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
+      Auth.show('login');
+    }
+    document.getElementById('api-input').value=CONFIG.API_BASE;
+    setTimeout(()=>document.getElementById('splash')?.remove(), 3500);
+  },
+  updateUser(){
+    const auth=Storage.getAuth();
+    const t=auth? `${auth.username} · ${auth.inviteCode}` : '未登录';
+    document.getElementById('user-pill').textContent=t;
+    document.getElementById('setting-user').textContent=auth? auth.username : '未登录';
+    document.getElementById('setting-api').value=CONFIG.API_BASE;
+    const role=Storage.get().profile?.myRole;
+    const sel=document.getElementById('setting-role'); if(sel && role) sel.value=role;
+  },
+  go(page){
+    document.querySelectorAll('main > section').forEach(s=>s.classList.add('hidden'));
+    document.getElementById(page+'-view')?.classList.remove('hidden');
+    document.querySelectorAll('.app-nav button').forEach(b=>b.classList.toggle('active', b.dataset.page===page));
+    if(page==='home') Home.render();
+    if(page==='shared') Shared.render();
+    if(page==='feed') Feed.render();
+    if(page==='travel') Travel.render();
+    if(page==='study') Study.render();
+    if(page==='settings') this.updateUser();
+  },
+  render(){ Home.render(); Shared.render(); },
+  toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200); },
+  setSync(status){
+    const el=document.getElementById('sync-status'); if(!el) return;
+    if(status==='online'){ el.textContent='在线'; el.className='sync-status'; }
+    else if(status==='syncing'){ el.textContent='同步中'; el.className='sync-status'; }
+    else { el.textContent='离线'; el.className='sync-status offline'; }
+  },
+  openModal(title, bodyHtml, onOk){
+    document.getElementById('modal-title').textContent=title;
+    document.getElementById('modal-body').innerHTML=bodyHtml;
+    const ok=document.getElementById('modal-ok'); ok.onclick=()=>{ if(onOk) onOk(); this.closeModal(); };
+    document.getElementById('modal').classList.add('open');
+  },
+  closeModal(){ document.getElementById('modal').classList.remove('open'); },
+  importData(){
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json';
+    inp.onchange=()=>{ const f=inp.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); Storage.set(d); App.toast('导入成功'); App.boot(); }catch(e){ App.toast('文件格式错误'); } }; r.readAsText(f); };
+    inp.click();
+  }
+};
+
+/* ===== 小家模块 ===== */
+const Home = {
+  render(){
+    const s=getShared(); const d=Storage.get();
+    document.getElementById('room').dataset.theme=d.home.theme;
+    this.renderBars(s.pets);
+    this.setPetState('yier', s.pets.yiEr.activity);
+    this.setPetState('bubu', s.pets.buBu.activity);
+    // 高亮我的小熊
+    const my=d.profile?.myRole;
+    document.getElementById('pet-yier').classList.toggle('me', my==='yiEr');
+    document.getElementById('pet-bubu').classList.toggle('me', my==='buBu');
+    // 白板
+    document.getElementById('wb-text').textContent=s.whiteboard.text||'';
+  },
+  renderBars(pets){
+    const y=pets.yiEr;
+    document.getElementById('bar-hunger-yier').style.width=y.hunger+'%';
+    document.getElementById('bar-mood-yier').style.width=y.mood+'%';
+    document.getElementById('bar-energy-yier').style.width=y.energy+'%';
+    document.getElementById('bar-intimacy-yier').style.width=y.intimacy+'%';
+  },
+  setPetState(id, act){
+    const el=document.getElementById('pet-'+id);
+    el.querySelector('.pet-state')?.remove();
+    const a=ACTIVITIES[act]; if(a && act!=='idle'){ const s=document.createElement('div'); s.className='pet-state'; s.textContent=a.icon; el.appendChild(s); }
+  },
+  tapBear(key){
+    const name=key==='yiEr'?'一二':'布布';
+    App.openModal('和'+name+'互动', `
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button class="btn" onclick="Home.bearAction('${key}','pat')">🤚 摸头（加心情/亲密）</button>
+        <button class="btn secondary" onclick="Home.bearAction('${key}','feed')">🍖 喂食（加饱腹）</button>
+        <button class="btn secondary" onclick="Role.setBearActivity('${key}')">🎭 设置${name}当前状态</button>
+      </div>`, null);
+  },
+  bearAction(key, action){
+    const s=getShared(); const p=s.pets[key];
+    if(action==='pat'){ p.mood=Math.min(100,p.mood+8); p.intimacy=Math.min(100,p.intimacy+5); p.activity='idle'; App.toast((key==='yiEr'?'一二':'布布')+' 开心地蹭蹭你~'); }
+    if(action==='feed'){ p.hunger=Math.min(100,p.hunger+25); App.toast('喂了'+(key==='yiEr'?'一二':'布布')+'，饱腹+25'); }
+    setShared(s); Home.render(); Sync.pushShared(); App.closeModal();
+  },
+  feedMy(){
+    const my=Storage.get().profile?.myRole||'yiEr'; this.bearAction(my,'feed');
+  },
+  toggleTheme(){
+    const d=Storage.get(); d.home.theme=d.home.theme==='ghibli'?'pastoral':'ghibli'; Storage.set(d); Home.render(); App.toast('主题已切换');
+  },
+  openFridge(){ Fridge.switchTab('stock'); document.getElementById('fridge-modal').classList.add('open'); },
+  closeFridge(e){ if(e.target.id==='fridge-modal') this.closeFridgeForce(); },
+  closeFridgeForce(){ document.getElementById('fridge-modal').classList.remove('open'); },
+  openTravel(){ App.go('travel'); }
+};
+
+/* ===== 角色系统 ===== */
+const Role = {
+  setMyRole(v){
+    const d=Storage.get(); d.profile=d.profile||{}; d.profile.myRole=v; Storage.set(d);
+    Home.render(); App.toast('你现在是'+(v==='yiEr'?'一二':'布布')+'，另一只熊是你的伴侣 ❤️');
+  },
+  openActivity(){
+    const s=getShared();
+    const opts=Object.keys(ACTIVITIES).map(k=>`<div class="activity-opt" data-k="${k}"><span class="emoji">${ACTIVITIES[k].icon}</span>${ACTIVITIES[k].label}</div>`).join('');
+    const common=Object.keys(COMMON_ACTS).map(k=>`<button class="btn small secondary" onclick="Role.common('${k}')">${COMMON_ACTS[k].icon} ${COMMON_ACTS[k].label}</button>`).join('');
+    App.openModal('状态与活动', `
+      <p style="font-size:0.8rem;color:var(--muted);">先分别给一二、布布设状态，再选下面的「一起」活动（会同步发朋友圈）。</p>
+      <div style="margin-top:8px;font-weight:700;font-size:0.85rem;">一二当前：${ACTIVITIES[s.pets.yiEr.activity].icon}${ACTIVITIES[s.pets.yiEr.activity].label}</div>
+      <div class="activity-grid" id="act-yier">${opts}</div>
+      <div style="font-weight:700;font-size:0.85rem;">布布当前：${ACTIVITIES[s.pets.buBu.activity].icon}${ACTIVITIES[s.pets.buBu.activity].label}</div>
+      <div class="activity-grid" id="act-bubu">${opts}</div>
+      <hr style="border:none;border-top:1px solid #eee;margin:12px 0;">
+      <div style="font-weight:700;font-size:0.85rem;margin-bottom:6px;">共同活动</div>
+      <div class="common-acts">${common}</div>
+    `, ()=>{
+      const sy=document.querySelector('#act-yier .activity-opt.active')?.dataset.k;
+      const sb=document.querySelector('#act-bubu .activity-opt.active')?.dataset.k;
+      const s2=getShared();
+      if(sy){ s2.pets.yiEr.activity=sy; s2.pets.yiEr.activitySince=Date.now(); }
+      if(sb){ s2.pets.buBu.activity=sb; s2.pets.buBu.activitySince=Date.now(); }
+      setShared(s2); Home.render(); Sync.pushShared();
+    });
+    // 默认选中当前状态
+    setTimeout(()=>{
+      const s3=getShared();
+      document.querySelectorAll('#act-yier .activity-opt').forEach(o=>o.classList.toggle('active', o.dataset.k===s3.pets.yiEr.activity));
+      document.querySelectorAll('#act-bubu .activity-opt').forEach(o=>o.classList.toggle('active', o.dataset.k===s3.pets.buBu.activity));
+      document.querySelectorAll('#act-yier .activity-opt,#act-bubu .activity-opt').forEach(o=>o.onclick=()=>{ const grid=o.parentElement; grid.querySelectorAll('.activity-opt').forEach(x=>x.classList.remove('active')); o.classList.add('active'); });
+    },30);
+  },
+  setBearActivity(key){
+    const cur=getShared().pets[key].activity;
+    const opts=Object.keys(ACTIVITIES).map(k=>`<div class="activity-opt ${k===cur?'active':''}" data-k="${k}" onclick="this.parentElement.querySelectorAll('.activity-opt').forEach(x=>x.classList.remove('active'));this.classList.add('active')"><span class="emoji">${ACTIVITIES[k].icon}</span>${ACTIVITIES[k].label}</div>`).join('');
+    App.openModal((key==='yiEr'?'一二':'布布')+'的状态', `<div class="activity-grid">${opts}</div>`, ()=>{
+      const k=document.querySelector('#modal-body .activity-opt.active')?.dataset.k;
+      if(k){ const s=getShared(); s.pets[key].activity=k; s.pets[key].activitySince=Date.now(); setShared(s); Home.render(); Sync.pushShared(); }
+    });
+  },
+  common(act){
+    const a=COMMON_ACTS[act]; const s=getShared();
+    s.pets.yiEr.activity=act; s.pets.yiEr.activitySince=Date.now();
+    s.pets.buBu.activity=act; s.pets.buBu.activitySince=Date.now();
+    setShared(s); Home.render(); Sync.pushShared();
+    // 自动发朋友圈
+    Feed.post('一二和布布'+a.verb+' '+a.icon, [], null, '一二 & 布布');
+    App.closeModal(); App.toast(a.label+'，已记录到朋友圈~');
+  }
+};
+
+/* ===== 冰箱管理（库存 + 今日菜单） ===== */
+const Fridge = {
+  tab:'stock',
+  switchTab(t){
+    this.tab=t;
+    document.querySelectorAll('.fridge-tabs button').forEach(b=>b.classList.toggle('active', (b.textContent==='库存'&&t==='stock')||(b.textContent==='今日菜单'&&t==='menu')));
+    this.render();
+    if(document.getElementById('fridge-modal')) document.getElementById('fridge-modal').classList.add('open');
+  },
+  render(){
+    if(this.tab==='menu') return this.renderMenu();
+    const s=getShared();
+    let html='<div class="row" style="margin-bottom:10px;"><button class="btn small" style="flex:1;" onclick="Fridge.add()">＋ 添加食材</button></div>';
+    for(const z of ['cold','freeze']){
+      html+=`<div class="fridge-zone ${z}"><h4>${z==='cold'?'冷藏区':'冷冻区'}</h4>`;
+      for(const cat of FRIDGE_CATS){
+        const items=(s.fridge[z]&&s.fridge[z][cat])||[];
+        html+=`<div class="fridge-cat"><div class="fridge-cat-title"><span>${CAT_ICON[cat]} ${cat}</span><span style="color:var(--muted);">${items.length}</span></div>`;
+        if(items.length){
+          html+=items.map(it=>{
+            let cls='fridge-item'; let exp='';
+            if(it.expire){ const days=Math.ceil((new Date(it.expire)-new Date())/86400000);
+              if(days<0){ cls+=' expired'; exp=`<span class="exp">已过期</span>`; }
+              else if(days<=3){ cls+=' expire-soon'; exp=`<span class="exp">${days}天到期</span>`; } }
+            return `<div class="${cls}" onclick="Fridge.edit('${z}','${cat}','${it.id}')">
+              <span>${it.icon||CAT_ICON[cat]} ${it.name} <span class="qty">×${it.qty}${it.unit||''}</span> ${exp}</span>
+              <span style="color:var(--danger);font-size:0.75rem;">✎</span></div>`;
+          }).join('');
+        } else { html+='<div class="fridge-item" style="color:#aaa;font-size:0.75rem;">暂无</div>'; }
+        html+='</div>';
+      }
+      html+='</div>';
+    }
+    // 汇总食材名（用于菜单推荐）
+    document.getElementById('fridge-content').innerHTML=html;
+  },
+  allItems(){
+    const s=getShared(); const out=[];
+    for(const z of ['cold','freeze']) for(const cat of FRIDGE_CATS) ((s.fridge[z]&&s.fridge[z][cat])||[]).forEach(it=>out.push(it));
+    return out;
+  },
+  add(){
+    App.openModal('添加食材', `
+      <div class="row">
+        <select id="f-zone"><option value="cold">冷藏</option><option value="freeze">冷冻</option></select>
+        <select id="f-cat">${FRIDGE_CATS.map(c=>`<option>${c}</option>`).join('')}</select>
+      </div>
+      <input id="f-name" placeholder="名称如：苹果">
+      <div class="row">
+        <input id="f-qty" type="number" placeholder="数量" value="1">
+        <input id="f-unit" placeholder="单位(个/袋/斤)" value="个" style="width:40%;">
+      </div>
+      <input id="f-expire" type="date" placeholder="保质期(可选)">
+    `, ()=>{
+      const zone=document.getElementById('f-zone').value;
+      const cat=document.getElementById('f-cat').value;
+      const name=document.getElementById('f-name').value.trim();
+      const qty=parseInt(document.getElementById('f-qty').value)||1;
+      const unit=document.getElementById('f-unit').value.trim()||'个';
+      const expire=document.getElementById('f-expire').value||'';
+      if(!name){ App.toast('请输入名称'); return; }
+      const s=getShared(); s.fridge[zone][cat]=s.fridge[zone][cat]||[];
+      s.fridge[zone][cat].push({id:'i'+Date.now(),name,qty,unit,expire,icon:CAT_ICON[cat]});
+      setShared(s); this.render(); Sync.pushShared(); App.toast('已添加');
+    });
+  },
+  edit(zone,cat,id){
+    const s=getShared(); const it=(s.fridge[zone][cat]||[]).find(x=>x.id===id); if(!it) return;
+    App.openModal('编辑食材', `
+      <div class="row">
+        <select id="f-zone"><option value="cold" ${zone==='cold'?'selected':''}>冷藏</option><option value="freeze" ${zone==='freeze'?'selected':''}>冷冻</option></select>
+        <select id="f-cat">${FRIDGE_CATS.map(c=>`<option ${c===cat?'selected':''}>${c}</option>`).join('')}</select>
+      </div>
+      <input id="f-name" value="${it.name}">
+      <div class="row">
+        <input id="f-qty" type="number" value="${it.qty}">
+        <input id="f-unit" value="${it.unit||'个'}" style="width:40%;">
+      </div>
+      <input id="f-expire" type="date" value="${it.expire||''}">
+    `, ()=>{
+      const nzone=document.getElementById('f-zone').value, ncat=document.getElementById('f-cat').value;
+      const name=document.getElementById('f-name').value.trim(), qty=parseInt(document.getElementById('f-qty').value)||1, unit=document.getElementById('f-unit').value.trim()||'个', expire=document.getElementById('f-expire').value||'';
+      // 从原位置删除
+      s.fridge[zone][cat]=s.fridge[zone][cat].filter(x=>x.id!==id);
+      s.fridge[nzone][ncat]=s.fridge[nzone][ncat]||[];
+      s.fridge[nzone][ncat].push({id,name,qty,unit,expire,icon:CAT_ICON[ncat]});
+      setShared(s); this.render(); Sync.pushShared(); App.toast('已保存');
+    });
+    // 增加删除按钮
+    setTimeout(()=>{ const ok=document.getElementById('modal-ok'); const del=document.createElement('button'); del.className='btn small danger'; del.style.marginRight='8px'; del.textContent='🗑 删除'; del.onclick=()=>{ const s2=getShared(); s2.fridge[zone][cat]=s2.fridge[zone][cat].filter(x=>x.id!==id); setShared(s2); this.render(); Sync.pushShared(); App.closeModal(); App.toast('已删除'); }; ok.parentElement.insertBefore(del, ok); },20);
+  },
+  /* 今日菜单 */
+  renderMenu(){
+    const s=getShared();
+    let html=`<div class="row" style="margin-bottom:10px;">
+      <button class="btn small" style="flex:1;" onclick="Fridge.addMenu()">＋ 手动加菜</button>
+      <button class="btn small secondary" style="flex:1;" onclick="Fridge.recommend()">✨ 智能推荐</button>
+    </div>`;
+    html+=`<div style="font-size:0.8rem;color:var(--muted);margin-bottom:6px;">今日菜单（点 ✅ 完成，点 🗑 删除）</div>`;
+    if(s.menu.length){
+      html+=s.menu.map(m=>`<div class="todo-item ${m.done?'done':''}"><input type="checkbox" ${m.done?'checked':''} onchange="Fridge.toggleMenu('${m.id}')"><span>${m.name}</span><button class="btn small danger" style="padding:2px 8px;margin-left:auto;" onclick="Fridge.delMenu('${m.id}')">🗑</button></div>`).join('');
+    } else { html+='<div class="empty-tip">还没有安排今天的菜，点「智能推荐」试试～</div>'; }
+    document.getElementById('fridge-content').innerHTML=html;
+  },
+  addMenu(){
+    const name=prompt('今天想吃什么？'); if(!name) return;
+    const s=getShared(); s.menu.push({id:'m'+Date.now(),name,done:false}); setShared(s); this.renderMenu(); Sync.pushShared();
+  },
+  toggleMenu(id){ const s=getShared(); const m=s.menu.find(x=>x.id===id); if(m){ m.done=!m.done; setShared(s); this.renderMenu(); Sync.pushShared(); } },
+  delMenu(id){ const s=getShared(); s.menu=s.menu.filter(x=>x.id!==id); setShared(s); this.renderMenu(); Sync.pushShared(); },
+  recommend(){
+    const items=this.allItems().map(i=>i.name.toLowerCase());
+    const has=(ing)=> items.some(n=> n.includes(ing.toLowerCase()) || ing.toLowerCase().includes(n));
+    const lib=[...DISHES, ...getShared().dishLibrary];
+    let scored=lib.map(d=>{
+      const have=d.ing.filter(has).length;
+      const miss=d.ing.filter(i=>!has(i));
+      return {d, have, total:d.ing.length, miss};
+    }).filter(x=>x.total>0);
+    scored.sort((a,b)=> (b.have/b.total)-(a.have/a.total) || b.d.nut.p+b.d.nut.f+b.d.nut.c - (a.d.nut.p+a.d.nut.c+a.d.nut.f));
+    scored=scored.slice(0,6);
+    if(!scored.length){ App.toast('冰箱里还没有食材哦'); return; }
+    const cards=scored.map((x,i)=>{
+      const d=x.d;
+      const ingHtml=d.ing.map(ing=>`<span class="${x.miss.includes(ing)?'miss':''}">${ing}${x.miss.includes(ing)?'（缺）':''}</span>`).join('、');
+      return `<div class="dish-card">
+        <h4>${i+1}. ${d.name} <span class="tag">${d.cat}</span></h4>
+        <div class="dish-meta">🔥 ${d.cal} kcal ｜ 蛋白${d.nut.p}g 脂肪${d.nut.f}g 碳水${d.nut.c}g ｜ 已有 ${x.have}/${x.total} 样食材</div>
+        <div class="dish-ing">食材：${ingHtml}</div>
+        <div class="dish-steps">做法：${d.steps.join('；')}</div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn small" style="flex:1;" onclick="Fridge.addDishToMenu('${encodeURIComponent(d.name)}')">加入今日菜单</button>
+          <button class="btn small secondary" style="flex:1;" onclick="Fridge.addDishToLib('${encodeURIComponent(JSON.stringify(d))}')">收藏到菜库</button>
+          <button class="btn small secondary" style="flex:1;" onclick="window.open('https://www.baidu.com/s?wd='+encodeURIComponent('${d.name}做法'),'_blank')">联网查做法</button>
+        </div>
+      </div>`;
+    }).join('');
+    App.openModal('今日菜单 · 智能推荐', `<p style="font-size:0.78rem;color:var(--muted);">已按冰箱现有食材 + 营养搭配推荐（括号标「缺」的表示冰箱没有）。</p>${cards}`, null);
+  },
+  addDishToMenu(name){ const s=getShared(); s.menu.push({id:'m'+Date.now(),name:decodeURIComponent(name),done:false}); setShared(s); App.toast('已加入今日菜单'); },
+  addDishToLib(json){ const s=getShared(); const d=JSON.parse(decodeURIComponent(json)); if(!s.dishLibrary.find(x=>x.name===d.name)){ s.dishLibrary.push(d); setShared(s); Sync.pushShared(); App.toast('已收藏到菜库'); } else App.toast('菜库已有这道菜'); }
+};
+
+/* 内置菜库（curated，含热量/营养/做法） */
+const DISHES=[
+  {name:'西红柿炒蛋',cat:'素',cal:180,nut:{p:9,f:12,c:10},ing:['鸡蛋','西红柿'],steps:['鸡蛋打散炒熟盛出','西红柿切块下锅炒出汁','倒入鸡蛋翻炒，加盐糖调味']},
+  {name:'青椒肉丝',cat:'荤',cal:240,nut:{p:20,f:14,c:8},ing:['猪肉','青椒'],steps:['肉丝用生抽淀粉腌制','青椒切丝','热油快炒，加生抽出锅']},
+  {name:'清炒西兰花',cat:'素',cal:90,nut:{p:5,f:3,c:12},ing:['西兰花'],steps:['西兰花焯水','蒜末爆香翻炒','加盐出锅']},
+  {name:'红烧肉',cat:'荤',cal:480,nut:{p:22,f:38,c:10},ing:['猪肉'],steps:['五花肉焯水','冰糖炒糖色','加生抽老抽料酒慢炖40分钟']},
+  {name:'番茄牛腩',cat:'荤',cal:320,nut:{p:26,f:18,c:12},ing:['牛肉','西红柿'],steps:['牛腩焯水','与番茄同炖','高压锅40分钟收汁']},
+  {name:'蒜蓉生菜',cat:'素',cal:70,nut:{p:3,f:2,c:8},ing:['生菜'],steps:['生菜洗净','蒜末爆香快炒','加盐出锅']},
+  {name:'蒸蛋羹',cat:'蛋',cal:110,nut:{p:10,f:6,c:4},ing:['鸡蛋'],steps:['鸡蛋打散加1.5倍温水','过滤去泡','中火蒸10分钟']},
+  {name:'可乐鸡翅',cat:'荤',cal:300,nut:{p:18,f:14,c:20},ing:['鸡肉'],steps:['鸡翅煎两面黄','倒入可乐没过','收汁裹亮']},
+  {name:'酸辣土豆丝',cat:'素',cal:130,nut:{p:3,f:4,c:22},ing:['土豆'],steps:['土豆切丝泡水','干辣椒爆香翻炒','加醋生抽出锅']},
+  {name:'紫菜蛋花汤',cat:'汤',cal:60,nut:{p:6,f:3,c:3},ing:['鸡蛋','紫菜'],steps:['水烧开下紫菜','淋蛋液','加盐香油']},
+  {name:'冬瓜排骨汤',cat:'汤',cal:160,nut:{p:14,f:10,c:6},ing:['猪肉','冬瓜'],steps:['排骨焯水炖1小时','下冬瓜再炖20分钟','加盐']},
+  {name:'宫保鸡丁',cat:'荤',cal:280,nut:{p:20,f:16,c:14},ing:['鸡肉','青椒'],steps:['鸡丁腌制滑炒','加花生干辣椒','调宫保汁翻炒']},
+  {name:'麻婆豆腐',cat:'荤',cal:200,nut:{p:14,f:12,c:8},ing:['豆腐','猪肉'],steps:['豆腐切块','炒肉末豆瓣酱','下豆腐勾芡']},
+  {name:'清蒸鲈鱼',cat:'荤',cal:180,nut:{p:28,f:6,c:2},ing:['鱼'],steps:['鱼身改刀','铺姜丝蒸8分钟','淋蒸鱼豉油热油']},
+  {name:'蛋炒饭',cat:'主食',cal:320,nut:{p:10,f:10,c:45},ing:['鸡蛋','米饭'],steps:['米饭打散','蛋液裹饭翻炒','加盐葱花']},
+  {name:'西红柿鸡蛋面',cat:'主食',cal:300,nut:{p:12,f:8,c:46},ing:['鸡蛋','西红柿','面条'],steps:['西红柿炒出汁','加水煮面','淋蛋液']},
+  {name:'凉拌黄瓜',cat:'素',cal:50,nut:{p:2,f:1,c:8},ing:['黄瓜'],steps:['黄瓜拍碎','加蒜醋生抽','拌匀']},
+  {name:'胡萝卜炒肉',cat:'荤',cal:210,nut:{p:16,f:12,c:10},ing:['猪肉','胡萝卜'],steps:['肉片滑炒','下胡萝卜丝','调味出锅']},
+  {name:'香菇青菜',cat:'素',cal:80,nut:{p:4,f:3,c:10},ing:['青菜','香菇'],steps:['香菇泡发切片','青菜翻炒','加香菇调味']},
+  {name:'玉米排骨汤',cat:'汤',cal:200,nut:{p:16,f:12,c:14},ing:['猪肉','玉米'],steps:['排骨炖1小时','下玉米再炖30分钟','加盐']},
+  {name:'照烧鸡腿',cat:'荤',cal:340,nut:{p:24,f:18,c:18},ing:['鸡肉'],steps:['鸡腿煎熟','照烧汁（酱油糖料酒）收汁']},
+  {name:'地三鲜',cat:'素',cal:160,nut:{p:4,f:8,c:20},ing:['土豆','青椒'],steps:['土豆茄子油炸','青椒翻炒','调汁烧入味']},
+  {name:'皮蛋瘦肉粥',cat:'主食',cal:180,nut:{p:12,f:6,c:24},ing:['猪肉','米'],steps:['米煮粥','加肉丝皮蛋','加盐葱花']},
+  {name:'蚝油生菜',cat:'素',cal:75,nut:{p:3,f:3,c:8},ing:['生菜'],steps:['生菜焯水','蚝油蒜末淋上']},
+  {name:'土豆炖牛肉',cat:'荤',cal:360,nut:{p:24,f:20,c:22},ing:['牛肉','土豆'],steps:['牛肉炖软','下土豆块','收汁']},
+  {name:'虾仁蒸蛋',cat:'蛋',cal:140,nut:{p:14,f:7,c:4},ing:['鸡蛋','虾'],steps:['蛋液加温水','摆虾仁蒸10分钟','淋生抽']},
+  {name:'小米南瓜粥',cat:'主食',cal:120,nut:{p:3,f:1,c:26},ing:['南瓜','米'],steps:['小米南瓜同煮','熬至浓稠']},
+  {name:'白灼虾',cat:'荤',cal:120,nut:{p:22,f:2,c:1},ing:['虾'],steps:['水开下虾','煮2分钟捞起','蘸生抽']},
+  {name:'菠菜豆腐汤',cat:'汤',cal:80,nut:{p:8,f:4,c:5},ing:['豆腐','青菜'],steps:['水开下豆腐青菜','加盐香油']}
+];
+
+/* ===== 墙面白板 ===== */
+const Whiteboard = {
+  open(){
+    const s=getShared(); const me=Storage.get().profile?.myRole==='buBu'?'布布':(Storage.get().profile?.myRole==='yiEr'?'一二':'我');
+    App.openModal('📋 墙面小白板', `
+      <p style="font-size:0.78rem;color:var(--muted);">写给彼此的小留言，夫妻共享可见～</p>
+      <textarea id="wb-input" rows="3" placeholder="写点什么…">${s.whiteboard.text||''}</textarea>
+    `, ()=>{
+      const s2=getShared(); s2.whiteboard={text:document.getElementById('wb-input').value, editor:me, ts:Date.now()};
+      setShared(s2); Home.render(); Sync.pushShared(); App.toast('已写到小白板');
+    });
+  }
+};
+
+/* ===== 朋友圈（社交记录） ===== */
+const Feed = {
+  pendingVoice:null,
+  render(){
+    const s=getShared(); const list=document.getElementById('feed-list');
+    if(!s.feed || !s.feed.length){ list.innerHTML='<div class="empty-tip">还没有动态，点上方「发布动态」记录生活吧～</div>'; return; }
+    const sorted=[...s.feed].sort((a,b)=>b.ts-a.ts);
+    list.innerHTML=sorted.map(p=>{
+      const imgs=p.images&&p.images.length? `<div class="feed-imgs">${p.images.map(u=>`<img src="${u}" onclick="window.open('${u}','_blank')">`).join('')}</div>` : '';
+      const voice=p.voiceUrl? `<div class="feed-voice"><audio controls src="${p.voiceUrl}"></audio></div>` : '';
+      const av=p.author&&p.author.includes('布布')?'🐻':'🐼';
+      const time=new Date(p.ts).toLocaleString('zh-CN',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+      return `<div class="feed-card">
+        <div class="feed-head"><div class="feed-avatar">${av}</div><div><div class="feed-author">${p.author||'一二布布'}</div><div class="feed-time">${time}</div></div></div>
+        ${p.text?`<div class="feed-text">${p.text.replace(/</g,'&lt;')}</div>`:''}
+        ${imgs}${voice}
+      </div>`;
+    }).join('');
+  },
+  post(text, images, voiceUrl, author){
+    const s=getShared(); s.feed=s.feed||[];
+    s.feed.unshift({id:'f'+Date.now(), author:author||'一二布布', text, images:images||[], voiceUrl:voiceUrl||null, ts:Date.now()});
+    setShared(s); this.render(); Sync.pushShared();
+  },
+  compose(){
+    this.pendingVoice=null;
+    App.openModal('发布动态', `
+      <textarea id="feed-text" rows="4" placeholder="今天发生了什么？"></textarea>
+      <div class="row">
+        <label class="btn small secondary" style="flex:1;margin:0;">📷 照片<input id="feed-img" type="file" accept="image/*" capture="environment" multiple style="display:none;"></label>
+        <button class="btn small secondary" id="feed-rec" style="flex:1;margin:0;" onclick="Feed.toggleRec()">🎤 录音</button>
+      </div>
+      <div id="feed-preview" style="font-size:0.75rem;color:var(--muted);margin-top:6px;"></div>
+    `, async ()=>{
+      const text=document.getElementById('feed-text').value.trim();
+      const fileInput=document.getElementById('feed-img');
+      const images=[];
+      if(fileInput.files.length){
+        App.toast('上传图片中…');
+        for(const f of fileInput.files){ try{ const u=await Media.upload(await Media.compress(f)); images.push(u); }catch(e){ App.toast('图片上传失败'); } }
+      }
+      let voiceUrl=null;
+      if(this.pendingVoice){ try{ App.toast('上传语音中…'); voiceUrl=await Media.upload(this.pendingVoice); }catch(e){ App.toast('语音上传失败'); } }
+      if(!text && !images.length && !voiceUrl){ App.toast('写点什么或加张图吧'); return; }
+      const me=Storage.get().profile?.myRole==='buBu'?'布布':(Storage.get().profile?.myRole==='yiEr'?'一二':'我');
+      this.post(text, images, voiceUrl, me);
+      App.toast('已发布');
+    });
+    // 预览
+    setTimeout(()=>{ const fi=document.getElementById('feed-img'); if(fi) fi.onchange=()=>{ document.getElementById('feed-preview').textContent='已选 '+fi.files.length+' 张照片'; }; },20);
+  },
+  toggleRec(){
+    const btn=document.getElementById('feed-rec');
+    if(this._recording){ this.stopRec(); return; }
+    Media.startRec().then(()=>{ this._recording=true; btn.classList.add('recording'); btn.textContent='⏹ 停止'; App.toast('录音中…'); })
+      .catch(e=>App.toast('无法录音：'+e.message));
+  },
+  stopRec(){
+    this._recording=false; const btn=document.getElementById('feed-rec'); btn.classList.remove('recording'); btn.textContent='🎤 重录';
+    Media.stopRec().then(blob=>{ this.pendingVoice=blob; document.getElementById('feed-preview').textContent='已录语音 '+Math.round(blob.size/1024)+'KB'; }).catch(e=>App.toast('录音失败'));
+  }
+};
+
+/* ===== 媒体工具 ===== */
+const Media = {
+  async compress(file, max=1000, quality=0.8){
+    return new Promise((resolve,reject)=>{
+      const img=new Image(); const url=URL.createObjectURL(file);
+      img.onload=()=>{
+        let {width,height}=img; const scale=Math.min(1, max/Math.max(width,height));
+        const w=Math.round(width*scale), h=Math.round(height*scale);
+        const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        cv.toBlob(b=>{ URL.revokeObjectURL(url); b?resolve(b):reject(new Error('压缩失败')); }, 'image/jpeg', quality);
+      };
+      img.onerror=()=>reject(new Error('图片读取失败'));
+      img.src=url;
+    });
+  },
+  async upload(blob){
+    const auth=Storage.getAuth(); if(!auth) throw new Error('请先登录');
+    const name='m'+Date.now()+(blob.type.includes('audio')?'.webm':'.jpg');
+    const res=await fetch(CONFIG.API_BASE+'/api/media?name='+encodeURIComponent(name), {method:'POST', headers:{'Authorization':'Bearer '+auth.token, 'Content-Type': blob.type||'application/octet-stream'}, body:blob});
+    if(!res.ok) throw new Error('上传失败');
+    const j=await res.json(); return CONFIG.API_BASE + j.url;
+  },
+  _rec:null, _chunks:[],
+  startRec(){
+    return new Promise(async (resolve,reject)=>{
+      try{
+        const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+        const mr=window.MediaRecorder? new MediaRecorder(stream) : null;
+        if(!mr) throw new Error('浏览器不支持录音');
+        this._chunks=[];
+        mr.ondataavailable=e=>{ if(e.data.size) this._chunks.push(e.data); };
+        mr.onstop=()=>{ stream.getTracks().forEach(t=>t.stop()); };
+        mr.start(); this._rec=mr; resolve();
+      }catch(e){ reject(e); }
+    });
+  },
+  stopRec(){ return new Promise((resolve,reject)=>{ if(!this._rec){ reject(new Error('未开始')); return; } this._rec.onstop=()=>{ this._rec.stream&&this._rec.stream.getTracks().forEach(t=>t.stop()); const blob=new Blob(this._chunks,{type:this._chunks[0]?.type||'audio/webm'}); resolve(blob); }; this._rec.stop(); this._rec=null; }); }
+};
+
+/* ===== 公共空间模块 ===== */
+const Shared = {
+  render(){
+    const auth=Storage.getAuth(); const s=getShared();
+    document.getElementById('group-code').textContent=auth? auth.inviteCode : '未登录';
+    document.getElementById('group-actions').innerHTML=auth? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn small secondary" onclick="Shared.copyCode()">复制邀请码</button>
+        <button class="btn small secondary" onclick="Shared.join()">加入其他圈子</button>
+      </div>` : '<p style="font-size:0.8rem;color:var(--muted);">登录后可查看圈子</p>';
+    let html='';
+    html+=`<div class="module-card"><h3>📝 共享待办</h3><div id="shared-todos"></div><button class="btn small" style="margin-top:8px;" onclick="Shared.addTodo()">+ 添加</button></div>`;
+    html+=`<div class="module-card"><h3>📅 打卡月历</h3><div class="habit-grid" id="shared-habit"></div></div>`;
+    html+=`<div class="module-card"><h3>🎓 学习榜</h3><div id="shared-exam"></div></div>`;
+    document.getElementById('shared-list').innerHTML=html;
+    this.renderTodos(s); this.renderHabit(s); this.renderExam(s);
+  },
+  renderTodos(s){
+    const todos=s.todos||[];
+    document.getElementById('shared-todos').innerHTML=todos.length? todos.map(t=>`<div class="todo-item ${t.done?'done':''}"><input type="checkbox" ${t.done?'checked':''} onchange="Shared.toggleTodo(${t.id})"><span>${t.text}</span></div>`).join('') : '<div class="empty-tip">暂无待办</div>';
+  },
+  addTodo(){ const text=prompt('输入待办内容'); if(!text) return; const s=getShared(); s.todos.push({id:Date.now(),text,done:false}); setShared(s); this.renderTodos(s); Sync.pushShared(); },
+  toggleTodo(id){ const s=getShared(); const t=s.todos.find(x=>x.id===id); if(t){ t.done=!t.done; setShared(s); this.renderTodos(s); Sync.pushShared(); } },
+  renderHabit(s){
+    const today=new Date(); let html='';
+    for(let i=0;i<7;i++){ const d=new Date(today); d.setDate(today.getDate()-6+i); const key=d.toISOString().slice(0,10); const done=!!(s.habits.records[key]); html+=`<div class="day ${done?'done':''}">${d.getDate()}</div>`; }
+    document.getElementById('shared-habit').innerHTML=html;
+    document.querySelector('#shared-habit .day:last-child').onclick=()=>{ const key=new Date().toISOString().slice(0,10); const sd=getShared(); sd.habits.records[key]=!sd.habits.records[key]; setShared(sd); this.renderHabit(sd); Sync.pushShared(); App.toast(sd.habits.records[key]?'今日打卡成功':'已取消打卡'); };
+  },
+  renderExam(s){
+    const e=s.exam; let html='';
+    if(e.examName && e.examDate){ const days=Math.ceil((new Date(e.examDate)-new Date())/86400000); html+=`<div style="font-size:0.85rem;margin-bottom:6px;">距离 <b>${e.examName}</b> 还有 <b>${days}</b> 天</div>`; }
+    html+=`<div style="font-size:0.8rem;color:var(--muted);">今日专注 ${s.pets.yiEr.growth||0} 分钟 · 总成长值 ${(s.pets.yiEr.growth||0)+(s.pets.buBu.growth||0)}</div>`;
+    document.getElementById('shared-exam').innerHTML=html;
+  },
+  copyCode(){ const auth=Storage.getAuth(); if(auth){ navigator.clipboard.writeText(auth.inviteCode).then(()=>App.toast('邀请码已复制')); } },
+  join(){ const code=prompt('输入6位邀请码'); if(!code) return; Sync.req('/api/group/join',{method:'POST',body:JSON.stringify({code})}).then(r=>{ App.toast('加入成功'); Sync.now(); }).catch(e=>App.toast(e.message)); }
+};
+
+/* ===== 学习视图（番茄钟 + 考试倒计时） ===== */
+const Study = {
+  render(){
+    const s=getShared(); const e=s.exam;
+    let examHtml='';
+    if(e.examName && e.examDate){ const days=Math.ceil((new Date(e.examDate)-new Date())/86400000); examHtml=`<div style="font-size:0.9rem;margin-bottom:6px;">📌 <b>${e.examName}</b> 还有 <b style="color:var(--primary-dark)">${days}</b> 天</div>`; }
+    document.getElementById('study-view').innerHTML=`
+      <div class="panel">
+        <div class="panel-title">🍅 番茄钟</div>
+        <div style="text-align:center;font-size:2.4rem;font-weight:700;color:var(--primary-dark);" id="pomo-time">25:00</div>
+        <div class="row" style="margin-top:8px;">
+          <button class="btn small" style="flex:1;" onclick="Study.pomoStart()">开始</button>
+          <button class="btn small secondary" style="flex:1;" onclick="Study.pomoReset()">重置</button>
+        </div>
+        <p style="font-size:0.75rem;color:var(--muted);margin-top:8px;">今日专注：${e.pomodoro?.today||0} 分钟</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">🎓 考试倒计时</div>
+        ${examHtml}
+        <input id="exam-name" placeholder="考试名称" value="${e.examName||''}">
+        <input id="exam-date" type="date" value="${e.examDate||''}">
+        <button class="btn small" style="width:100%;margin-top:6px;" onclick="Study.saveExam()">保存</button>
+      </div>`;
+  },
+  _timer:null, _left:25*60,
+  pomoStart(){ const s=getShared(); if(this._timer) return; this._timer=setInterval(()=>{ this._left--; const m=String(Math.floor(this._left/60)).padStart(2,'0'), sec=String(this._left%60).padStart(2,'0'); const el=document.getElementById('pomo-time'); if(el) el.textContent=m+':'+sec; if(this._left<=0){ clearInterval(this._timer); this._timer=null; this._left=25*60; const sd=getShared(); sd.exam.pomodoro=sd.exam.pomodoro||{today:0,total:0}; sd.exam.pomodoro.today+=25; sd.exam.pomodoro.total+=25; setShared(sd); Sync.pushShared(); App.toast('番茄钟完成 +25分钟'); } },1000); },
+  pomoReset(){ if(this._timer){ clearInterval(this._timer); this._timer=null; } this._left=25*60; const el=document.getElementById('pomo-time'); if(el) el.textContent='25:00'; },
+  saveExam(){ const s=getShared(); s.exam.examName=document.getElementById('exam-name').value.trim(); s.exam.examDate=document.getElementById('exam-date').value; setShared(s); Sync.pushShared(); App.toast('已保存'); this.render(); }
+};
+
+/* ===== 旅行模块 ===== */
+const Travel = {
+  render(){
+    const data=Storage.get();
+    let html=`<div class="panel"><div class="panel-title">✈️ 随机旅行 <button class="btn small" onclick="Travel.generate()">生成新攻略</button></div>
+      <p style="font-size:0.82rem;color:var(--muted);">默认从${CONFIG.DEFAULT_ORIGIN}出发，随机选一座城市，生成交通+景点+美食+开销攻略和一二布布视角游记。</p>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <input id="travel-origin" placeholder="出发地" value="${CONFIG.DEFAULT_ORIGIN}" style="flex:1;margin:0;">
+        <select id="travel-days" style="width:90px;margin:0;"><option value="2">2天</option><option value="3" selected>3天</option><option value="5">5天</option><option value="7">7天</option></select>
+        <select id="travel-budget" style="width:90px;margin:0;"><option value="eco">经济</option><option value="comfy" selected>舒适</option><option value="lux">豪华</option></select>
+      </div>
+    </div>`;
+    if(data.travels && data.travels.length){
+      const t=data.travels[0];
+      html+=`<div class="travel-card"><div class="travel-header"><div class="travel-route">${t.origin} → ${t.city}</div><div class="travel-budget">约 ¥${t.budget.total}/人</div></div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:8px;">交通：${t.transport.type} ¥${t.transport.cost} · ${t.days}天 · ${t.budget.level}</div>
+        <div style="font-size:0.8rem;line-height:1.6;"><b>攻略亮点：</b>${t.highlights.join(' · ')}</div>`;
+      t.journal.forEach((j,i)=>{ html+=`<div class="journal-day"><h4>第${i+1}天 · ${j.title}</h4><p>${j.story}</p><p style="margin-top:4px;color:var(--muted);font-size:0.75rem;">行程：${j.plan}</p></div>`; });
+      html+=`</div>`;
+    } else { html+=`<div class="empty-tip">还没有旅行攻略，点击上方按钮生成一个吧~</div>`; }
+    document.getElementById('travel-view').innerHTML=html;
+  },
+  generate(){
+    const origin=document.getElementById('travel-origin').value.trim()||CONFIG.DEFAULT_ORIGIN;
+    const days=parseInt(document.getElementById('travel-days').value);
+    const budgetLevel=document.getElementById('travel-budget').value;
+    const plan=TravelPlanner.plan(origin, days, budgetLevel);
+    const data=Storage.get(); data.travels.unshift(plan); if(data.travels.length>10) data.travels.pop(); Storage.set(data); this.render(); Sync.now().catch(()=>{}); App.toast(`已生成 ${plan.city} 攻略`);
+  }
+};
+
+/* ===== 旅行攻略生成器 ===== */
+const TravelPlanner = {
+  cities:[
+    {name:'长沙', dist:600, tags:['美食','夜生活'], spots:['橘子洲','岳麓山','五一广场','文和友'], foods:['臭豆腐','糖油粑粑','茶颜悦色'], hotel:200},
+    {name:'厦门', dist:700, tags:['海岛','文艺'], spots:['鼓浪屿','曾厝垵','环岛路','南普陀寺'], foods:['沙茶面','海蛎煎','土笋冻'], hotel:280},
+    {name:'桂林', dist:400, tags:['山水','自然'], spots:['漓江','象鼻山','阳朔西街','龙脊梯田'], foods:['桂林米粉','啤酒鱼','油茶'], hotel:180},
+    {name:'成都', dist:1500, tags:['美食','熊猫'], spots:['宽窄巷子','锦里','大熊猫基地','武侯祠'], foods:['火锅','串串','担担面'], hotel:250},
+    {name:'昆明', dist:1300, tags:['花海','气候'], spots:['滇池','石林','翠湖','斗南花市'], foods:['过桥米线','鲜花饼','汽锅鸡'], hotel:220},
+    {name:'西安', dist:1600, tags:['历史','面食'], spots:['兵马俑','大雁塔','回民街','城墙'], foods:['肉夹馍','凉皮','羊肉泡馍'], hotel:220},
+    {name:'杭州', dist:1200, tags:['西湖','江南'], spots:['西湖','灵隐寺','河坊街','西溪湿地'], foods:['西湖醋鱼','龙井虾仁','片儿川'], hotel:300},
+    {name:'青岛', dist:1900, tags:['海滨','啤酒'], spots:['栈桥','八大关','崂山','五四广场'], foods:['海鲜','啤酒','鲅鱼饺子'], hotel:260},
+    {name:'苏州', dist:1400, tags:['园林','古镇'], spots:['拙政园','平江路','周庄','虎丘'], foods:['苏式汤面','松鼠桂鱼','青团'], hotel:280},
+    {name:'大理', dist:1600, tags:['古城','洱海'], spots:['洱海','大理古城','苍山','喜洲'], foods:['饵丝','乳扇','酸辣鱼'], hotel:200}
+  ],
+  plan(origin, days, budgetLevel){
+    const city=this.cities[Math.floor(Math.random()*this.cities.length)];
+    const multi={eco:0.7, comfy:1, lux:1.6}[budgetLevel];
+    let transportType='高铁', transportCost=Math.round(city.dist*0.4*multi);
+    if(city.dist>1200){ transportType='飞机'; transportCost=Math.round((600+city.dist*0.3)*multi); }
+    else if(city.dist<500){ transportType='动车/自驾'; transportCost=Math.round(city.dist*0.35*multi); }
+    const hotel=Math.round(city.hotel*multi);
+    const food=Math.round((80+Math.random()*60)*multi);
+    const tickets=Math.round((50+Math.random()*80)*multi);
+    const total=transportCost*2 + hotel*(days-1) + food*days + tickets*days;
+    const highlights=[...city.tags, city.spots[0], city.foods[0]];
+    const journal=[];
+    for(let i=0;i<days;i++){
+      const spot=city.spots[i % city.spots.length];
+      const food=city.foods[i % city.foods.length];
+      const surprise=['发现了一家藏在巷子里的老店','偶遇一只蹭人的小猫','转角看到一片没人的花墙','吃到比攻略更好吃的小吃','遇到热情的本地阿姨指路'][Math.floor(Math.random()*5)];
+      journal.push({ title: i===0? '抵达'+city.name : city.name+'慢游 Day '+(i+1), plan: `上午 ${spot} · 中午 ${food} · 下午 ${city.spots[(i+1)%city.spots.length]} · 晚上 ${i===days-1?'收拾返程':'逛吃'}`, story: `今天一二和布布${i===0?'终于来到了':'继续探索'}${city.name}。布布说：「${spot}比想象中还美呢！」一二捧着${food}开心得直晃脑袋。${i>0?'虽然没完全按攻略走，但':''}${surprise}，这就是旅行的小惊喜呀~` });
+    }
+    return {origin, city, days, transport:{type:transportType,cost:transportCost}, budget:{level:{eco:'经济',comfy:'舒适',lux:'豪华'}[budgetLevel], hotel, food, tickets, total}, highlights, journal, createdAt:Date.now()};
+  }
+};
+
+/* ===== 启动与 Service Worker ===== */
+window.addEventListener('DOMContentLoaded', ()=>{
+  Auth.show('login');
+  setTimeout(()=>{ App.boot(); }, 100);
+});
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
