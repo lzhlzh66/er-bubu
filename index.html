@@ -259,7 +259,7 @@
         <div id="auth-form"></div>
         <div class="api-input" style="margin-top:12px;">
           <label>同步服务器地址（默认本地测试）</label>
-          <input id="api-input" type="text" value="http://localhost:3000">
+          <input id="api-input" type="text" value="https://er-bubu-server.onrender.com">
         </div>
       </div>
     </section>
@@ -485,7 +485,7 @@ window.addEventListener('load', function(){ setTimeout(function(){ removeSplash(
 /* ===== 配置 ===== */
 window.CONFIG = {
   APP_NAME: '一二布布', VERSION: '2.0.0',
-  API_BASE: lsGet('er-bubu-api', 'http://localhost:3000'),
+  API_BASE: lsGet('er-bubu-api', 'https://er-bubu-server.onrender.com'),
   DEFAULT_ORIGIN: '广州'
 };
 
@@ -561,11 +561,19 @@ const Sync = {
     const auth=Storage.getAuth();
     const headers={};
     if(auth&&auth.token) headers['Authorization']='Bearer '+auth.token;
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(), 45000);
     try{
-      const res=await fetch(CONFIG.API_BASE+path, {...opts, headers:{...headers, ...(opts.headers||{})}});
+      const res=await fetch(CONFIG.API_BASE+path, {...opts, headers:{...headers, ...(opts.headers||{})}, signal:ctrl.signal});
+      clearTimeout(timer);
       if(!res.ok) throw new Error((await res.json()).error||res.statusText);
       return await res.json();
-    }catch(e){ throw e; }
+    }catch(e){
+      clearTimeout(timer);
+      if(e && e.name==='AbortError') throw new Error('请求超时：后端可能正在启动（首次较慢），请稍候重试');
+      if(e && e.message==='Failed to fetch') throw new Error('无法连接后端，请检查网络或稍后重试');
+      throw e;
+    }
   },
   async now(){
     const auth=Storage.getAuth(); if(!auth) return App.toast('请先登录');
