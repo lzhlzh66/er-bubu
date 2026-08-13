@@ -485,7 +485,7 @@ function ensureVisible(){
     var app = document.getElementById('app');
     if(auth && app && auth.classList.contains('hidden') && app.classList.contains('hidden')){
       auth.classList.remove('hidden');
-      app.classList.add('hidden');
+      app.classList.remove('hidden'); // auth-screen 在 #app 内部，父容器必须显示
       try { Auth.show('login'); } catch(_){}
     }
   } catch(e){}
@@ -656,8 +656,9 @@ const App = {
         this.updateUser(); bootLog('updateUser 完成'); this.go('home'); bootLog('go(home) 完成'); Home.render(); bootLog('Home.render 完成'); Sync.now().catch(()=>{});
       } else {
         document.getElementById('auth-screen').classList.remove('hidden');
-        document.getElementById('app').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden'); // auth-screen 在 #app 内部，必须显示父容器
         Auth.show('login'); bootLog('Auth.show(login) 完成');
+        bootLog('#app 已显示（未登录）');
       }
       document.getElementById('api-input').value=CONFIG.API_BASE;
       bootLog('boot() 成功结束 ✅');
@@ -665,7 +666,12 @@ const App = {
       console.error('boot failed', e);
       bootLog('boot 异常: ' + (e && e.message ? e.message : e));
       // 即使出错也至少显示登录界面，绝不卡白屏
-      try { document.getElementById('auth-screen')?.classList.remove('hidden'); } catch(_){}
+      try {
+        var _app = document.getElementById('app');
+        var _auth = document.getElementById('auth-screen');
+        if(_app) _app.classList.remove('hidden');
+        if(_auth) _auth.classList.remove('hidden');
+      } catch(_){}
       showBootError('启动失败: ' + (e && e.message ? e.message : e), e && e.stack);
     } finally {
       removeSplash();
