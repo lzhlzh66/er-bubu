@@ -211,6 +211,17 @@
     /*  Toast  */
     #toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none; background: rgba(61,50,41,0.9); color: #fff; padding: 10px 18px; border-radius: 24px; font-size: 0.85rem; z-index: 1000; transition: all 0.3s; }
     #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* 启动期错误可视化面板（默认隐藏，出错才显示，避免白屏） */
+    .boot-error { display: none; position: fixed; inset: 0; z-index: 99999; overflow: auto;
+      background: #2b1414; color: #ffd9d9; font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+      padding: 20px; box-sizing: border-box; }
+    .boot-error .be-head { font-size: 1.05rem; font-weight: 700; color: #ff8a8a; margin-bottom: 10px; }
+    .boot-error .be-msg { font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; word-break: break-all; }
+    .boot-error .be-stack { font-size: 0.78rem; line-height: 1.5; white-space: pre-wrap; color: #ffb3b3;
+      background: rgba(0,0,0,0.25); padding: 10px; border-radius: 8px; }
+    .boot-error .be-close { margin-top: 14px; background: #ff8a8a; color: #2b1414; border: 0; border-radius: 8px;
+      padding: 8px 16px; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -348,6 +359,8 @@
         <button class="btn secondary small" onclick="Storage.export()">导出数据</button>
         <button class="btn secondary small" onclick="App.importData()">导入数据</button>
         <button class="btn danger small" style="margin-top:10px;" onclick="Auth.logout()">退出登录</button>
+        <button class="btn danger small" style="margin-top:10px;width:100%;" onclick="clearCacheAndReset()">清除缓存并重置</button>
+        <p style="font-size:0.72rem;color:var(--muted);margin-top:8px;">若页面异常/白屏，可点此强制清除 Service Worker 缓存与本地数据并重载。</p>
       </div>
     </section>
   </main>
@@ -389,12 +402,55 @@
 </div>
 
 <div id="toast"></div>
+<div id="boot-error" class="boot-error"></div>
 
 <script>
+/* ===== 安全存储封装（防止受限存储模式抛错导致整段脚本中断→白屏） ===== */
+function _safe(fn, fallback){
+  try { return fn(); } catch(e){ return fallback; }
+}
+function lsGet(k, d){
+  return _safe(function(){ const v = localStorage.getItem(k); return v===null||v===undefined ? d : v; }, d);
+}
+function lsSet(k, v){
+  return _safe(function(){ localStorage.setItem(k, v); return true; }, false);
+}
+function lsRemove(k){
+  return _safe(function(){ localStorage.removeItem(k); return true; }, false);
+}
+function lsClear(){
+  return _safe(function(){ localStorage.clear(); return true; }, false);
+}
+
+/* ===== 全局错误可视化（把白屏变成可读错误） ===== */
+function showBootError(msg, stack){
+  try {
+    var box = document.getElementById('boot-error');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'boot-error';
+      (document.body||document.documentElement).appendChild(box);
+    }
+    box.className = 'boot-error';
+    box.style.display = 'block';
+    box.innerHTML = '<div class="be-head">⚠️ 页面出错（请截图发给开发者）</div>'
+      + '<div class="be-msg"></div><div class="be-stack"></div>'
+      + '<button class="be-close" onclick="this.parentNode.style.display=\'none\'">关闭</button>';
+    box.querySelector('.be-msg').textContent = String(msg||'未知错误');
+    box.querySelector('.be-stack').textContent = stack ? String(stack) : '';
+  } catch(e){ /* 最后兜底：什么都别做，避免二次崩溃 */ }
+}
+window.addEventListener('error', function(e){
+  showBootError(e && e.message ? e.message : '脚本错误', e && e.error ? e.error.stack : '');
+});
+window.addEventListener('unhandledrejection', function(e){
+  var r = e && e.reason; showBootError('异步错误', r && r.stack ? r.stack : (r ? String(r) : ''));
+});
+
 /* ===== 配置 ===== */
 window.CONFIG = {
   APP_NAME: '一二布布', VERSION: '2.0.0',
-  API_BASE: localStorage.getItem('er-bubu-api') || 'http://localhost:3000',
+  API_BASE: lsGet('er-bubu-api', 'http://localhost:3000'),
   DEFAULT_ORIGIN: '广州'
 };
 
@@ -418,13 +474,13 @@ const CAT_ICON = {水果:'🍎',青菜:'🥬',肉类:'🥩',海鲜:'🦐',蛋奶
 const Storage = {
   KEY: 'er-bubu-data-v2', AUTH_KEY: 'er-bubu-auth',
   get() {
-    try { const raw = localStorage.getItem(this.KEY); if(!raw) return defaultData(); return this.migrate(JSON.parse(raw)); }
+    try { const raw = lsGet(this.KEY); if(!raw) return defaultData(); return this.migrate(JSON.parse(raw)); }
     catch(e){ console.error(e); return defaultData(); }
   },
-  set(data){ data.updatedAt = Date.now(); localStorage.setItem(this.KEY, JSON.stringify(data)); },
-  getAuth(){ try{ return JSON.parse(localStorage.getItem(this.AUTH_KEY))||null; }catch(e){ return null; } },
-  setAuth(a){ localStorage.setItem(this.AUTH_KEY, JSON.stringify(a)); },
-  clearAuth(){ localStorage.removeItem(this.AUTH_KEY); const d=this.get(); d.profile=null; this.set(d); },
+  set(data){ data.updatedAt = Date.now(); lsSet(this.KEY, JSON.stringify(data)); },
+  getAuth(){ try{ const r = lsGet(this.AUTH_KEY); return r ? JSON.parse(r) : null; }catch(e){ return null; } },
+  setAuth(a){ lsSet(this.AUTH_KEY, JSON.stringify(a)); },
+  clearAuth(){ lsRemove(this.AUTH_KEY); const d=this.get(); d.profile=null; this.set(d); },
   migrate(data){
     const def=defaultData();
     for(const k of Object.keys(def)) if(data[k]===undefined) data[k]=JSON.parse(JSON.stringify(def[k]));
@@ -543,18 +599,26 @@ const Auth = {
 /* ===== 应用主控 ===== */
 const App = {
   boot(){
-    const auth=Storage.getAuth();
-    if(auth){
-      document.getElementById('auth-screen').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      this.updateUser(); this.go('home'); Home.render(); Sync.now().catch(()=>{});
-    } else {
-      document.getElementById('auth-screen').classList.remove('hidden');
-      document.getElementById('app').classList.add('hidden');
-      Auth.show('login');
+    try {
+      const auth=Storage.getAuth();
+      if(auth){
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        this.updateUser(); this.go('home'); Home.render(); Sync.now().catch(()=>{});
+      } else {
+        document.getElementById('auth-screen').classList.remove('hidden');
+        document.getElementById('app').classList.add('hidden');
+        Auth.show('login');
+      }
+      document.getElementById('api-input').value=CONFIG.API_BASE;
+    } catch(e){
+      console.error('boot failed', e);
+      // 即使出错也至少显示登录界面，绝不卡白屏
+      try { document.getElementById('auth-screen')?.classList.remove('hidden'); } catch(_){}
+      showBootError('启动失败: ' + (e && e.message ? e.message : e), e && e.stack);
+    } finally {
+      const sp=document.getElementById('splash'); if(sp) sp.remove();
     }
-    document.getElementById('api-input').value=CONFIG.API_BASE;
-    setTimeout(()=>document.getElementById('splash')?.remove(), 3500);
   },
   updateUser(){
     const auth=Storage.getAuth();
@@ -1137,10 +1201,41 @@ const TravelPlanner = {
 
 /* ===== 启动与 Service Worker ===== */
 window.addEventListener('DOMContentLoaded', ()=>{
-  Auth.show('login');
-  setTimeout(()=>{ App.boot(); }, 100);
+  try { Auth.show('login'); } catch(e){ showBootError('初始化登录页失败', e && e.stack); }
+  setTimeout(()=>{
+    try { App.boot(); } catch(e){ showBootError('启动失败', e && e.stack); }
+  }, 100);
 });
-if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(function(reg){
+    // 注册成功后立即检查更新，确保后续版本必然生效
+    if(reg && reg.update) { try { reg.update(); } catch(_){} }
+  }).catch(function(){ /* 注册失败不影响主流程 */ });
+  // 有新版本接管时提示刷新（避免旧缓存拖住界面）
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(window.__erReloading) return; window.__erReloading=true;
+    try {
+      var t=document.getElementById('toast');
+      if(t){ t.textContent='已更新，正在刷新…'; t.classList.add('show'); }
+    } catch(_){}
+    setTimeout(function(){ location.reload(); }, 800);
+  });
+}
+
+/* ===== 手动清缓存并重置（设置页按钮调用） ===== */
+async function clearCacheAndReset(){
+  try {
+    if('caches' in window){ const ks=await caches.keys(); for(const k of ks){ try{ await caches.delete(k); }catch(_){} } }
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const r of regs){ try{ await r.unregister(); }catch(_){} }
+    }
+    lsClear();
+    if(window.Storage){ try{ Storage.clearAuth(); }catch(_){} }
+    toast('已清除缓存与本地数据，即将刷新');
+    setTimeout(function(){ location.reload(); }, 900);
+  } catch(e){ showBootError('清缓存失败', e && e.stack); }
+}
 </script>
 </body>
 </html>
